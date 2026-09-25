@@ -1,0 +1,36 @@
+{
+  "id": "ed-sports",
+  "kind": "edition",
+  "title": "Sports desk",
+  "source": "coach",
+  "data": {
+    "section": "sports",
+    "rows": [
+      {
+        "text": "Start J.K. Dobbins over Rico Dowdle",
+        "stamp": "Sun 1:00 PM ET"
+      },
+      {
+        "text": "Rico Dowdle is Questionable",
+        "stamp": "Sun 1:00 PM ET"
+      },
+      {
+        "text": "George Kittle is Questionable",
+        "stamp": "Sun 1:00 PM ET"
+      }
+    ],
+    "tiles": [
+      {
+        "value": "118.6",
+        "label": "Projected"
+      },
+      {
+        "value": "2-0",
+        "label": "Record"
+      }
+    ]
+  },
+  "body": "Today is Friday. This week's lineup: Start J.K. Dobbins over Rico Dowdle; Rico Dowdle is Questionable; George Kittle is Questionable. Projected 118.6. Next kickoff Sun 1:00 PM ET.",
+  "created_at": "2026-09-25T13:31:01+00:00",
+  "fresh_until": "2026-09-25T21:31:01+00:00"
+}
