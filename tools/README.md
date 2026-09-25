@@ -141,6 +141,11 @@ The fonts are **generated but not used yet.** Wiring them into the cards means e
 `ui/charm_ui.cpp`/`ui/ui_card.cpp`, outside this pipeline's files. Until then the linker drops
 them from the firmware.
 
+**Player check.** `player_check/check_dex_player.cpp` links the real `ui/dex_sprite.cpp` against
+the sim's built libraries. It checks that the frames change on their `ms`, loop, and scale to full
+and mini, and that a pose with no art falls back to the gray box. `tests/test_player.py` builds and
+runs it, and is skipped until `build/sim` exists.
+
 ## Fonts and licenses
 
 | File | What | License |
