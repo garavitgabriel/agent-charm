@@ -323,15 +323,17 @@ def wire(feeds: dict[str, Feed], ctx: Context) -> Card:
     with_items = [f for f in sources if f.usable and _wire_items(f)]
     chosen = [f for f in with_items if f.state is State.FRESH] or with_items
     if not chosen:
-        # Nothing to run. Report the most informative trouble, preferring the primary desk.
-        troubled = [f for f in sources if f.state is not State.FRESH] or sources
-        return _finish(card, troubled[0], ctx)
+        # Nothing to run. A desk that filed (but had no items) beats a failed one, which beats
+        # a missing one; ties go to the primary desk.
+        rank = {State.FRESH: 0, State.STALE: 1, State.FAILED: 2, State.MISSING: 3}
+        return _finish(card, min(sources, key=lambda f: rank[f.state]), ctx)
 
     card["data"]["rows"] = _rows(item for f in chosen for item in _wire_items(f))
     if any(f.state is State.STALE for f in chosen):
         card["stale"] = True
-    # Name the first desk that isn't fresh, whether it ran stale or was left off.
-    notes = [trouble_note(f, ctx) for f in sources if f.state is not State.FRESH]
+    # Say why the rows are stale first; otherwise name a desk that was left off.
+    ordered = sorted(sources, key=lambda f: f not in chosen)
+    notes = [trouble_note(f, ctx) for f in ordered if f.state is not State.FRESH]
     if notes:
         card["footer"] = notes[0]
     card["created_at"] = iso(max(f.generated_at or ctx.now for f in chosen))

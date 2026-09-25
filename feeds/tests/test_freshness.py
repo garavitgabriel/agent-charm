@@ -145,7 +145,7 @@ def test_wire_runs_stale_items_labeled_when_nothing_fresh(
     card = built(feed_dir, validator)["wire"]
     assert card["stale"] is True
     assert {r["stamp"] for r in card["data"]["rows"]} == {"Radar"}
-    assert card["footer"] == "No filing from the paper desk yet."
+    assert card["footer"] == "Radar desk missed deadline — last filed Sun 14:02"
 
 
 def test_wire_honest_empty_when_no_source(feed_dir: Path, validator: CardValidator) -> None:
@@ -154,6 +154,16 @@ def test_wire_honest_empty_when_no_source(feed_dir: Path, validator: CardValidat
     card = built(feed_dir, validator)["wire"]
     assert card["body"] == "No filing from the paper desk yet."
     assert _content(card) == [None, None, None]
+
+
+def test_wire_prefers_a_desk_that_filed_nothing_over_a_missing_one(
+    feed_dir: Path, validator: CardValidator
+) -> None:
+    (feed_dir / "radar.json").unlink()
+    edit_feed(feed_dir, "paper-feed", lambda p: p.update(reading=[]))
+    card = built(feed_dir, validator)["wire"]
+    assert card["body"] == "The paper desk filed nothing for this section."
+    assert "stale" not in card
 
 
 def test_wire_never_carries_personal_mail(feed_dir: Path, validator: CardValidator) -> None:
