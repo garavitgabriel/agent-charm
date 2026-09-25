@@ -120,7 +120,15 @@ def notice_card(card_id: str, title: str, body: str, tz: str, stale: bool = Fals
 _MD_LINK = re.compile(r"\[([^\]]+)\]\([^)]+\)")
 _MD_MARKS = re.compile(r"(\*\*|__|\*|`+|~~)")
 _MD_LINE_PREFIX = re.compile(r"^\s*(#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|>\s*)", re.MULTILINE)
-_SENTENCE_END = re.compile("(?<=[.!?\u2026])[\"'\u201d\u2019)]*\\s+")
+# A sentence ends at . ! ? or … (plus closing quotes/brackets) followed by whitespace, unless the
+# next word starts lowercase, or the period closes an abbreviation or an initial ("Dr.", "EE.",
+# "J."). Decimals ("3.5") never match: there's no whitespace after their period.
+_BOUNDARY = re.compile("[.!?\u2026]+[\"'\u201d\u2019)\u00bb]*\\s+")
+_ABBREVIATIONS_EN = (
+    "mr mrs ms dr prof jr sr st vs e.g i.e a.m p.m approx dept inc ltd co mt ft u.s u.k"
+)
+_ABBREVIATIONS_ES = "sra srta dra ud uds ee uu pág págs aprox núm av ej lic ing dto"
+ABBREVIATIONS = frozenset(f"{_ABBREVIATIONS_EN} {_ABBREVIATIONS_ES}".split())
 
 
 def plain_text(text: str) -> str:
@@ -131,8 +139,73 @@ def plain_text(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def sentences(text: str) -> list[str]:
-    return [s.strip() for s in _SENTENCE_END.split(text) if s.strip()]
+def _is_boundary(text: str, match: re.Match[str]) -> bool:
+    after = text[match.end() : match.end() + 1]
+    if after[:1].islower():
+        return False  # "the U.S. economy", "etc. and so on", "3 p.m. today"
+    punct = match.group().rstrip()
+    if punct.rstrip("\"'\u201d\u2019)\u00bb") != ".":
+        return True  # ! ? … and "..." always end a sentence
+    before = text[: match.start()].rsplit(None, 1)
+    word = before[-1].lstrip("([{\"'\u201c\u2018\u00ab¿¡") if before else ""
+    if len(word) == 1 and word.isalpha() and word.isupper():
+        return False  # an initial: "J. R. R. Tolkien"
+    return word.lower() not in ABBREVIATIONS
+
+
+def sentences(text: str, final: bool = True) -> list[str]:
+    """Split plain text into sentences (EN/ES aware: abbreviations, initials, decimals).
+
+    With `final=False` the text is still streaming in, so the last piece (which may be half a
+    sentence, or a full stop whose next word hasn't arrived) is left out.
+    """
+    out: list[str] = []
+    start = 0
+    for match in _BOUNDARY.finditer(text):
+        if match.end() >= len(text):
+            break  # nothing after the whitespace yet: can't tell whether it's a boundary
+        if _is_boundary(text, match):
+            out.append(text[start : match.end()].strip())
+            start = match.end()
+    if final:
+        out.append(text[start:].strip())
+    return [s for s in out if s]
+
+
+class SpeechSplitter:
+    """Turns a streamed answer into the spoken sentences as soon as each one is complete.
+
+    Yields at most `SAY_MAX_SENTENCES` sentences within `SAY_MAX_CHARS`; joined, they equal
+    `say_text(full_answer)`.
+    """
+
+    def __init__(self) -> None:
+        self._raw = ""
+        self._spoken: list[str] = []
+        self._full = False
+
+    def feed(self, text: str) -> list[str]:
+        self._raw += text
+        return self._take(final=False)
+
+    def finish(self) -> list[str]:
+        return self._take(final=True)
+
+    def _take(self, final: bool) -> list[str]:
+        if self._full:
+            return []
+        found = sentences(plain_text(self._raw), final=final)
+        out: list[str] = []
+        for sentence in found[len(self._spoken) : SAY_MAX_SENTENCES]:
+            spoken = " ".join(self._spoken)
+            joined = f"{spoken} {sentence}" if spoken else sentence
+            clipped = _clip_chars(joined, SAY_MAX_CHARS)
+            out.append(clipped[len(spoken) + 1 :] if spoken else clipped)
+            self._spoken.append(sentence)
+            if clipped != joined or len(self._spoken) >= SAY_MAX_SENTENCES:
+                self._full = True
+                break
+        return out
 
 
 def _clip_chars(text: str, limit: int, force: bool = False) -> str:
@@ -155,7 +228,13 @@ def title_from_question(question: str) -> str:
     return _clip_chars(text, TITLE_MAX_CHARS)
 
 
-def answer_card(question: str, reply: str, language: str, tz: str) -> Card:
+def new_answer_id() -> str:
+    return f"ans-{uuid.uuid4().hex[:10]}"
+
+
+def answer_card(
+    question: str, reply: str, language: str, tz: str, card_id: str | None = None
+) -> Card:
     """Body at most 60 words (and 420 chars); a footer says when it was shortened."""
     text = plain_text(reply)
     words = text.split()
@@ -164,7 +243,7 @@ def answer_card(question: str, reply: str, language: str, tz: str) -> Card:
     if truncated:
         body = _clip_chars(body, BODY_MAX_CHARS, force=True)
     card: Card = {
-        "id": f"ans-{uuid.uuid4().hex[:10]}",
+        "id": card_id or new_answer_id(),
         "kind": "answer",
         "title": title_from_question(question),
         "body": body,

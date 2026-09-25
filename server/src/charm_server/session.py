@@ -14,8 +14,16 @@ from pathlib import Path
 from typing import Any
 
 from . import protocol as p
-from .agent import Agent, AgentError, AgentTimeout, Message, system_messages
-from .cards import Card, CardValidator, answer_card, load_cards, notice_card, say_text
+from .agent import Agent, AgentError, AgentTimeout, Message, answer_stream, system_messages
+from .cards import (
+    Card,
+    CardValidator,
+    SpeechSplitter,
+    answer_card,
+    load_cards,
+    new_answer_id,
+    notice_card,
+)
 from .config import Config
 from .stt import STT, TooShort
 from .tts import TTS, TTSError
@@ -44,15 +52,23 @@ class Deps:
 
 @dataclass
 class Timings:
+    """Seconds, measured on the server from the end of the recording.
+
+    agent_first: question sent → first piece of the answer. agent: → the whole answer.
+    tts: first sentence ready → its first audio out. first_audio: → the first audio out.
+    """
+
     stt: float = 0.0
+    agent_first: float = 0.0
     agent: float = 0.0
     tts: float = 0.0
+    first_audio: float = 0.0
     total: float = 0.0
 
     def line(self) -> str:
         return (
-            f"stt={self.stt:.2f}s agent={self.agent:.2f}s tts={self.tts:.2f}s "
-            f"total={self.total:.2f}s"
+            f"stt={self.stt:.2f}s agent_first={self.agent_first:.2f}s agent={self.agent:.2f}s "
+            f"tts={self.tts:.2f}s first_audio={self.first_audio:.2f}s total={self.total:.2f}s"
         )
 
 
@@ -298,8 +314,16 @@ class Session:
     # --- the talk job ------------------------------------------------------------------------
 
     async def _talk(self, pcm: bytes) -> None:
+        """Hear → ask Dex (streamed) → speak each sentence as soon as it's complete → card.
+
+        The speech runs alongside the answer: sentence 1 goes to TTS the moment it's complete,
+        sentence 2 is synthesized while sentence 1 plays. The card is sent once the whole
+        answer is in. When the answer is already complete by the time the first audio is ready,
+        the card still goes first (the PROTOCOL.md flow order); otherwise it arrives mid-speech.
+        """
         timings = Timings()
         started = time.monotonic()
+        speaker: _Speaker | None = None
         try:
             await self.send_state("transcribing")
             try:
@@ -316,27 +340,50 @@ class Session:
 
             question: Message = {"role": "user", "content": heard.text}
             messages = system_messages(heard.language) + self.history + [question]
+            card_id = new_answer_id()
+            speaker = _Speaker(self, heard.language, card_id)
+            splitter = SpeechSplitter()
+            parts: list[str] = []
             asked = time.monotonic()
             try:
-                reply = await asyncio.wait_for(
-                    self.deps.agent.reply(messages), timeout=self.deps.agent_timeout
-                )
+                async with asyncio.timeout(self.deps.agent_timeout):
+                    async for piece in answer_stream(self.deps.agent, messages):
+                        if not parts:
+                            timings.agent_first = time.monotonic() - asked
+                        parts.append(piece)
+                        for sentence in splitter.feed(piece):
+                            speaker.say(sentence)
             except (TimeoutError, AgentTimeout):
+                await speaker.abort()
                 await self._fail("agent_timeout", "Dex didn't answer within 120 seconds.")
                 return
             except AgentError as exc:
+                await speaker.abort()
                 await self._fail("agent_error", str(exc) or "Dex couldn't answer.")
                 return
+            reply = "".join(parts).strip()
+            if not reply:
+                await speaker.abort()
+                await self._fail("agent_error", "Dex sent an empty answer.")
+                return
+            for sentence in splitter.finish():
+                speaker.say(sentence)
+            speaker.end()
             timings.agent = time.monotonic() - asked
             self.history += [question, {"role": "assistant", "content": reply}]
             self.history = self.history[-2 * HISTORY_TURNS :]
 
-            card = answer_card(heard.text, reply, heard.language, self.deps.config.tz)
-            await self.send_card(card)
+            card = answer_card(heard.text, reply, heard.language, self.deps.config.tz, card_id)
+            speaker.answer_complete = True
+            try:
+                await self.send_card(card)
+            finally:
+                speaker.card_sent.set()
 
-            synth_started = time.monotonic()
-            first_audio = await self._speak(say_text(reply), heard.language, card["id"])
-            timings.tts = (first_audio or time.monotonic()) - synth_started
+            first_audio = await speaker.wait()
+            if first_audio is not None and speaker.first_text is not None:
+                timings.tts = first_audio - speaker.first_text
+                timings.first_audio = first_audio - started
             timings.total = time.monotonic() - started
             self.last_timings = timings
             log.info("talk timings %s", timings.line())
@@ -344,63 +391,153 @@ class Session:
         except asyncio.CancelledError:
             log.info("talk cancelled; any late answer is dropped")
             raise
+        finally:
+            if speaker is not None:
+                await speaker.abort()
 
     async def _fail(self, code: str, text: str) -> None:
+        if self._speaking:  # the answer broke off mid-speech: end it honestly first
+            self._speaking = False
+            await self.send({"type": "speech_end"})
         await self.send_error(code, text)
         await self.send_state("idle")
-
-    async def _speak(self, text: str, language: str, card_id: str) -> float | None:
-        """Stream TTS as it's synthesized. Returns when the first audio went out, if any.
-
-        A TTS failure before any audio leaves the card up without speech; a failure midway
-        ends the speech early. Either way the device gets an honest `speech_end`.
-        """
-        lead = self.deps.speech_lead_s
-        began = 0.0
-        sent_seconds = 0.0
-        pending = bytearray()
-
-        async def send_frame(frame: bytes) -> None:
-            nonlocal sent_seconds
-            if lead is not None:
-                ahead = sent_seconds - (time.monotonic() - began) - lead
-                if ahead > 0:
-                    await asyncio.sleep(ahead)
-            await self.send_raw(frame)
-            sent_seconds += len(frame) / p.BYTES_PER_SECOND
-
-        try:
-            async for chunk in self.deps.tts.stream(text, language):
-                if not self._speaking:
-                    await self.send_state("speaking")
-                    await self.send(
-                        {
-                            "type": "speech_start",
-                            "rate": p.SAMPLE_RATE,
-                            "format": p.SAMPLE_FORMAT,
-                            "channels": p.CHANNELS,
-                            "card_id": card_id,
-                        }
-                    )
-                    self._speaking = True
-                    began = time.monotonic()
-                pending.extend(chunk)
-                while len(pending) >= p.MAX_BINARY_FRAME:
-                    await send_frame(bytes(pending[: p.MAX_BINARY_FRAME]))
-                    del pending[: p.MAX_BINARY_FRAME]
-        except TTSError as exc:
-            log.warning("tts failed: %s", exc)
-        if not self._speaking:
-            return None
-        tail = bytes(pending[: len(pending) - len(pending) % 2])
-        if tail:
-            await send_frame(tail)
-        self._speaking = False
-        await self.send({"type": "speech_end"})
-        return began
 
     async def close(self) -> None:
         if self._job is not None and not self._job.done():
             self._job.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._job
+
+
+_END = None  # end of the spoken sentences
+
+
+class _Speaker:
+    """Speaks the answer's sentences as they arrive, for one talk job.
+
+    Sentences that are already waiting when TTS can start are synthesized together (one call);
+    each later sentence gets its own TTS stream, started at once so it's ready by the time the
+    one before it has played. Audio goes out in order, paced at real time plus a lead.
+
+    A TTS failure before any audio leaves the card up without speech; a failure midway ends the
+    speech early. Either way the device gets an honest `speech_end`.
+    """
+
+    def __init__(self, session: Session, language: str, card_id: str) -> None:
+        self.session = session
+        self.language = language
+        self.card_id = card_id
+        self.answer_complete = False
+        self.card_sent = asyncio.Event()
+        self.first_text: float | None = None  # when the first sentence was ready
+        self._sentences: asyncio.Queue[str | None] = asyncio.Queue()
+        self._segments: asyncio.Queue[asyncio.Queue[bytes | Exception | None] | None] = (
+            asyncio.Queue()
+        )
+        self._producers: list[asyncio.Task[None]] = []
+        self._batcher = asyncio.create_task(self._batch(), name="speech-batch")
+        self._player = asyncio.create_task(self._play(), name="speech-play")
+
+    def say(self, sentence: str) -> None:
+        if self.first_text is None:
+            self.first_text = time.monotonic()
+        self._sentences.put_nowait(sentence)
+
+    def end(self) -> None:
+        self._sentences.put_nowait(_END)
+
+    async def wait(self) -> float | None:
+        """Wait for the speech to finish. Returns when the first audio went out, if any."""
+        return await self._player
+
+    async def abort(self) -> None:
+        tasks = [self._batcher, self._player, *self._producers]
+        for task in tasks:
+            task.cancel()
+        for task in tasks:
+            with contextlib.suppress(BaseException):
+                await task
+
+    async def _batch(self) -> None:
+        try:
+            ended = False
+            while not ended:
+                first = await self._sentences.get()
+                if first is _END:
+                    break
+                batch = [first]
+                while not self._sentences.empty():
+                    more = self._sentences.get_nowait()
+                    if more is _END:
+                        ended = True
+                        break
+                    batch.append(more)
+                segment: asyncio.Queue[bytes | Exception | None] = asyncio.Queue()
+                self._producers.append(
+                    asyncio.create_task(self._synthesize(" ".join(batch), segment), name="tts")
+                )
+                self._segments.put_nowait(segment)
+        finally:
+            self._segments.put_nowait(None)
+
+    async def _synthesize(self, text: str, out: asyncio.Queue[bytes | Exception | None]) -> None:
+        try:
+            async for chunk in self.session.deps.tts.stream(text, self.language):
+                out.put_nowait(chunk)
+        except TTSError as exc:
+            out.put_nowait(exc)
+        finally:
+            out.put_nowait(None)
+
+    async def _play(self) -> float | None:
+        session = self.session
+        lead = session.deps.speech_lead_s
+        began: float | None = None
+        sent_seconds = 0.0
+        pending = bytearray()
+
+        async def send_frame(frame: bytes) -> None:
+            nonlocal sent_seconds
+            if lead is not None and began is not None:
+                ahead = sent_seconds - (time.monotonic() - began) - lead
+                if ahead > 0:
+                    await asyncio.sleep(ahead)
+            await session.send_raw(frame)
+            sent_seconds += len(frame) / p.BYTES_PER_SECOND
+
+        failed = False
+        while not failed and (segment := await self._segments.get()) is not None:
+            while (chunk := await segment.get()) is not None:
+                if isinstance(chunk, Exception):
+                    log.warning("tts failed: %s", chunk)
+                    failed = True
+                    break
+                if began is None:
+                    if self.answer_complete:
+                        await self.card_sent.wait()  # the card first, as in PROTOCOL.md
+                    await session.send_state("speaking")
+                    await session.send(
+                        {
+                            "type": "speech_start",
+                            "rate": p.SAMPLE_RATE,
+                            "format": p.SAMPLE_FORMAT,
+                            "channels": p.CHANNELS,
+                            "card_id": self.card_id,
+                        }
+                    )
+                    session._speaking = True
+                    began = time.monotonic()
+                pending.extend(chunk)
+                while len(pending) >= p.MAX_BINARY_FRAME:
+                    await send_frame(bytes(pending[: p.MAX_BINARY_FRAME]))
+                    del pending[: p.MAX_BINARY_FRAME]
+        if began is None:
+            return None
+        tail = bytes(pending[: len(pending) - len(pending) % 2])
+        if tail:
+            await send_frame(tail)
+        # The card must be out before the speech ends and the job goes idle.
+        await self.card_sent.wait()
+        session._speaking = False
+        await session.send({"type": "speech_end"})
+        return began
