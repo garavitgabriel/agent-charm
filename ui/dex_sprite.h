@@ -1,6 +1,7 @@
 // The Dex seam. Everything Dex looks like lives behind this header.
-// Today it is a gray placeholder box labeled with pose + outfit; the design sprint replaces only
-// dex_sprite.cpp's internals (sprite sheets, frames, props) and keeps this API.
+// dex_sprite.cpp plays the frame table generated into charm_assets_sprites.{h,cpp} by tools/
+// (`charm-assets sprites MANIFEST`); a pose/outfit with no frames is a gray placeholder box
+// labeled with pose + outfit. New art is a regenerate, never an API change.
 #pragma once
 #include <stdint.h>
 #include <lvgl.h>

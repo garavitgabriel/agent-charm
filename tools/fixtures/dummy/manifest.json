@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "sprites": {
+    "cell": [32, 40],
+    "scale": {"full": 5, "mini": 4},
+    "mini_origin": [6, 2],
+    "palette": ["#FF00FF", "#00C8B4", "#FFD000", "#FFFFFF", "#283050"],
+    "outfit_fallback": true,
+    "sheets": {"base": "dummy-sheet.png"},
+    "animations": [
+      {"pose": "idle", "outfit": "default", "row": 0,
+       "frames": [{"col": 0, "ms": 600}, {"col": 1, "ms": 400}]},
+      {"pose": "listening", "outfit": "default", "row": 1,
+       "frames": [{"col": 0, "ms": 300}, {"col": 1, "ms": 300}]},
+      {"pose": "working", "outfit": "default", "row": 2,
+       "frames": [{"col": 0, "ms": 250}, {"col": 1, "ms": 250}]},
+      {"pose": "idle", "outfit": "gameday", "row": 3,
+       "frames": [{"col": 0, "ms": 600}, {"col": 1, "ms": 400}]}
+    ]
+  },
+  "fonts": {
+    "lv_font_conv": "1.5.3",
+    "bpp": 4,
+    "symbols_file": "../../fonts/lvgl-symbols.ttf",
+    "faces": [
+      {"name": "body", "file": "../../fonts/AtkinsonHyperlegible-Regular.ttf",
+       "sizes": [14, 18, 24, 32],
+       "ranges": ["0x20-0x7E", "0xA0-0xFF"],
+       "symbols": ["OK", "CLOSE", "WARNING", "WIFI", "REFRESH", "LEFT", "RIGHT", "BELL",
+                   "AUDIO", "MUTE", "CHARGE", "BATTERY_FULL", "BATTERY_3", "BATTERY_2",
+                   "BATTERY_1", "BATTERY_EMPTY"]}
+    ]
+  }
+}
