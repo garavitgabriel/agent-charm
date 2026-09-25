@@ -102,6 +102,26 @@ never shown.
 | `busy` | A job is already running |
 | `stale` | Requested data exists but is past its `fresh_until` date (for cards, stale is shown inside the card instead) |
 
+## Clarifications — 2026-09-25 (chief rulings after batches 3 and 4)
+
+These are additive; nothing breaks. The device and UI must treat them as the contract.
+
+1. **A short money hold** is answered with `error{code:"too_short"}`, and the card stays in place.
+2. **After any error**, the server sends `state{idle}` (not `state{error}`). The device shows the error
+   text; `state{error}` is reserved for a device-side failure.
+3. **Speech order:** `state{speaking}` comes before `speech_start`.
+4. **A confirmed sample (fixture) money order** is replaced by a `notice` card ("Sample order: nothing
+   was charged"). No ✓ is shown, because nothing real happened.
+5. **Truncated-answer footer:** "Shortened. Ask Dex for the rest." Never "Full version in Telegram"
+   unless something was actually sent to Telegram.
+6. **An `action` on a card id this connection never received** is answered with `dismiss{card_id}`.
+7. **Edition cards may carry `stale: true` plus a footer** like "<Desk> desk missed deadline — last
+   filed <when>", and a failed desk yields a card with only that wording. `edition_no` is optional and
+   omitted when no feed provides it.
+8. **Decision cards need structured pending items.** No Dex feed publishes those yet (id, default,
+   deadline). Until one does, pending items appear as rows on the `waiting` edition card, with no
+   action buttons. A structured `pending[]` feed on the Hermes side is a follow-up.
+
 ## Versioning
 
 This is v0. The protocol version travels in `hello.fw` and `welcome.server` (e.g. `"charm-server/0.1 proto/0"`).
