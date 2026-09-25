@@ -1,7 +1,9 @@
-// charm_host.h for the Mac: device->server frames go to stdout as JSON lines (the chief pipes them
-// to the server at integration); host notes go to stderr. The fake mic always starts.
+// charm_host.h for the Mac: device->server frames go to stdout as JSON lines; host notes go to
+// stderr. Offline (--shots, --replay, no --connect) the fake mic always starts. With --connect the
+// frames also go to the server, and the mic and speech are real (sim_live.cpp).
 #include "sim_host.h"
 #include "charm_host.h"
+#include "sim_live.h"
 #include <chrono>
 #include <lvgl.h>
 #include <stdio.h>
@@ -34,20 +36,33 @@ void charm_host_send(const char *json, size_t len) {
     fwrite(json, 1, len, stdout);
     fputc('\n', stdout);
     fflush(stdout);
+    if (sim_live_active()) sim_live_send(json, len);
 }
 
 bool charm_host_mic_start(void) {
+    if (sim_live_active()) {
+        mic_on = sim_live_mic_start();
+        return mic_on;
+    }
     mic_on = true;
     fprintf(stderr, "[host] mic_start -> true (fake mic)\n");
     return true;
 }
 
 void charm_host_mic_stop(const char *reason) {
+    const bool was_on = mic_on;
     mic_on = false;
+    if (sim_live_active()) {
+        if (was_on) sim_live_mic_stop(reason);
+        else return;  // already ended by the host (25 s limit, WAV done, socket down)
+    }
     fprintf(stderr, "[host] mic_stop reason=%s\n", reason ? reason : "?");
 }
 
-void charm_host_speech_stop(void) { fprintf(stderr, "[host] speech_stop\n"); }
+void charm_host_speech_stop(void) {
+    fprintf(stderr, "[host] speech_stop\n");
+    if (sim_live_active()) sim_live_speech_stop();
+}
 
 void charm_host_set_brightness(uint8_t level) {
     if (level != brightness) fprintf(stderr, "[host] brightness %u\n", level);
