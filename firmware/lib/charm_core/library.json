@@ -1,0 +1,10 @@
+{
+  "name": "charm_core",
+  "version": "0.1.0",
+  "description": "Dex Charm firmware pure logic: frames, ring buffer, speech playback state, talk button, reconnect backoff, keepalive, motion and battery reporting. No Arduino or hardware dependencies, so it is unit-tested natively.",
+  "frameworks": "*",
+  "platforms": "*",
+  "dependencies": {
+    "bblanchon/ArduinoJson": "7.4.2"
+  }
+}
