@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/garavitgabriel/dex-charm/contract/card.schema.json",
+  "title": "Dex Charm card (proto v0)",
+  "type": "object",
+  "required": ["id", "kind", "title", "source", "created_at"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "kind": { "enum": ["answer", "decision", "money", "tracker", "edition", "job", "notice"] },
+    "title": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "body": { "type": "string", "maxLength": 420, "description": "At most ~60 words. Plain text, no markdown." },
+    "source": { "type": "string", "maxLength": 24, "description": "Who produced it: dex, coach, delivery, edition, github, other, system" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "fresh_until": { "type": "string", "format": "date-time", "description": "After this, the device labels the card stale" },
+    "stale": { "type": "boolean", "description": "Set by the producer when the underlying feed missed its deadline" },
+    "footer": { "type": "string", "maxLength": 80 },
+    "actions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": ["id", "label"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "maxLength": 24 },
+          "label": { "type": "string", "maxLength": 18 },
+          "style": { "enum": ["primary", "secondary", "danger"] },
+          "hold_ms": { "type": "integer", "minimum": 0, "maximum": 5000 }
+        }
+      }
+    },
+    "data": { "type": "object", "description": "Kind-specific payload; see the kind rules below" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "decision" } } },
+      "then": {
+        "required": ["data", "actions"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["default", "deadline"],
+            "properties": {
+              "default": { "type": "string", "maxLength": 40 },
+              "deadline": { "type": "string", "maxLength": 40 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "money" } } },
+      "then": {
+        "required": ["data", "actions"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["store", "items", "total", "currency"],
+            "properties": {
+              "store": { "type": "string", "maxLength": 40 },
+              "items": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "type": "object",
+                  "required": ["name", "qty"],
+                  "properties": {
+                    "name": { "type": "string", "maxLength": 40 },
+                    "qty": { "type": "integer", "minimum": 1 },
+                    "price": { "type": "number" }
+                  }
+                }
+              },
+              "total": { "type": "number" },
+              "currency": { "type": "string", "maxLength": 3 },
+              "eta_min": { "type": "integer" },
+              "address_label": { "type": "string", "maxLength": 30 },
+              "fixture": { "type": "boolean", "description": "true = sample data; confirming must not order anything" }
+            }
+          },
+          "actions": {
+            "contains": {
+              "type": "object",
+              "required": ["hold_ms"],
+              "properties": { "hold_ms": { "type": "integer", "minimum": 2000 } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "tracker" } } },
+      "then": {
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["steps", "current"],
+            "properties": {
+              "steps": { "type": "array", "minItems": 2, "maxItems": 6, "items": { "type": "string", "maxLength": 24 } },
+              "current": { "type": "integer", "minimum": 0 },
+              "eta_min": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "edition" } } },
+      "then": {
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["section"],
+            "properties": {
+              "section": { "enum": ["masthead", "one_thing", "sports", "almanac", "waiting", "wire"] },
+              "edition_no": { "type": "integer" },
+              "rows": {
+                "type": "array",
+                "maxItems": 12,
+                "items": {
+                  "type": "object",
+                  "required": ["text"],
+                  "properties": {
+                    "text": { "type": "string", "maxLength": 80 },
+                    "stamp": { "type": "string", "maxLength": 20 }
+                  }
+                }
+              },
+              "tiles": {
+                "type": "array",
+                "maxItems": 4,
+                "items": {
+                  "type": "object",
+                  "required": ["value", "label"],
+                  "properties": {
+                    "value": { "type": "string", "maxLength": 10 },
+                    "label": { "type": "string", "maxLength": 14 }
+                  }
+                }
+              },
+              "moon": { "type": "string", "maxLength": 20 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "job" } } },
+      "then": {
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": { "enum": ["running", "done", "failed"] },
+              "progress": { "type": "number", "minimum": 0, "maximum": 1 },
+              "link": { "type": "string", "maxLength": 200 }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

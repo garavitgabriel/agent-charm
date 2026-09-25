@@ -1,0 +1,14 @@
+.DS_Store
+.env
+*.local.json
+secrets.h
+.pio/
+build/
+out/
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.wav
+!**/fixtures/**/*.wav
