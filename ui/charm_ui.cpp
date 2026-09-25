@@ -86,6 +86,8 @@ std::string hold_card, hold_action;
 uint32_t last_second = 0;
 
 uint32_t now_ms() { return charm_host_millis(); }
+// Elapsed ms, treating a `since` later than `now` (host read `now` first) as 0, never ~49 days.
+uint32_t elapsed(uint32_t now, uint32_t since) { int32_t d = (int32_t)(now - since); return d > 0 ? (uint32_t)d : 0; }
 
 // ---------------------------------------------------------------- outgoing frames
 
@@ -483,7 +485,7 @@ void update_live() {
     if (W.level_bar) lv_bar_set_value(W.level_bar, (int32_t)(S.mic_level * 1000), LV_ANIM_OFF);
     if (W.elapsed) {
         char t[32];
-        const uint32_t e = now - S.listen_start;
+        const uint32_t e = elapsed(now, S.listen_start);
         snprintf(t, sizeof t, "%u.%u s / %u s", (unsigned)(e / 1000), (unsigned)(e % 1000 / 100),
                  (unsigned)(LISTEN_LIMIT_MS / 1000));
         if (strcmp(lv_label_get_text(W.elapsed), t) != 0) lv_label_set_text(W.elapsed, t);
@@ -888,18 +890,18 @@ void charm_ui_tick(uint32_t now) {
     if (!ready) return;
     dex_tick(now);
 
-    if (S.listening && now - S.listen_start >= LISTEN_LIMIT_MS) {
+    if (S.listening && elapsed(now, S.listen_start) >= LISTEN_LIMIT_MS) {
         S.listening = false;
         charm_host_mic_stop("limit");
         S.sending = true;
         S.sending_since = now;
         dirty = true;
     }
-    if (S.sending && now - S.sending_since >= SENDING_TIMEOUT_MS) {
+    if (S.sending && elapsed(now, S.sending_since) >= SENDING_TIMEOUT_MS) {
         S.sending = false;
         dirty = true;
     }
-    if (S.server_state == "done" && now - S.state_since >= DONE_DECAY_MS) {
+    if (S.server_state == "done" && elapsed(now, S.state_since) >= DONE_DECAY_MS) {
         S.server_state = "idle";
         S.state_label.clear();
         dirty = true;
@@ -909,7 +911,7 @@ void charm_ui_tick(uint32_t now) {
 
     if (!S.night && S.connected == 1 && shown == CharmSurface::Home && S.cards.empty() && !S.speaking &&
         S.server_state == "idle") {
-        uint32_t idle = now - S.last_activity;
+        uint32_t idle = elapsed(now, S.last_activity);
         const uint32_t touch_idle = lv_disp_get_inactive_time(nullptr);
         if (touch_idle < idle) idle = touch_idle;
         if (idle >= NIGHT_AFTER_MS) {
