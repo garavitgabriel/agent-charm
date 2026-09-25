@@ -180,9 +180,13 @@ class Device:
                 self._waiters.remove(waiter)
 
     async def barrier(self) -> None:
-        """Frames on one connection are handled in order, so a status reply means 'caught up'."""
-        future = self.wait_for("state")
-        await self.send({"type": "request", "what": "status"})
+        """Wait until the server has handled everything sent so far.
+
+        One connection's frames are handled in order and every ping gets exactly one pong, so
+        the pong for this ping comes after the replies to all earlier frames.
+        """
+        future = self.wait_for("pong")
+        await self.send({"type": "ping"})
         await future
 
     async def receive_forever(self) -> None:

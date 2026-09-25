@@ -64,9 +64,11 @@ class FakeTTS:
     pcm: bytes = field(default_factory=lambda: tone(0.5))
     calls: list[tuple[str, str]] = field(default_factory=list)
 
-    async def synthesize(self, text: str, language: str) -> bytes:
+    async def stream(self, text: str, language: str) -> AsyncIterator[bytes]:
         self.calls.append((text, language))
-        return self.pcm
+        # Odd-sized pieces, like a decoder pipe delivers them.
+        for i in range(0, len(self.pcm), 3001):
+            yield self.pcm[i : i + 3001]
 
 
 @pytest.fixture

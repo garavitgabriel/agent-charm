@@ -147,6 +147,8 @@ def main() -> None:
         level=logging.DEBUG if args.verbose else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    for noisy in ("httpx", "huggingface_hub"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     config = Config.from_env()
     if args.host or args.port:
         from dataclasses import replace

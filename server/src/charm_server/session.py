@@ -335,14 +335,8 @@ class Session:
             await self.send_card(card)
 
             synth_started = time.monotonic()
-            try:
-                speech = await self.deps.tts.synthesize(say_text(reply), heard.language)
-            except TTSError as exc:
-                log.warning("tts failed, card stays up without speech: %s", exc)
-                speech = b""
-            timings.tts = time.monotonic() - synth_started
-            if speech:
-                await self._speak(speech, card["id"])
+            first_audio = await self._speak(say_text(reply), heard.language, card["id"])
+            timings.tts = (first_audio or time.monotonic()) - synth_started
             timings.total = time.monotonic() - started
             self.last_timings = timings
             log.info("talk timings %s", timings.line())
@@ -355,30 +349,55 @@ class Session:
         await self.send_error(code, text)
         await self.send_state("idle")
 
-    async def _speak(self, pcm: bytes, card_id: str) -> None:
-        await self.send_state("speaking")
-        await self.send(
-            {
-                "type": "speech_start",
-                "rate": p.SAMPLE_RATE,
-                "format": p.SAMPLE_FORMAT,
-                "channels": p.CHANNELS,
-                "card_id": card_id,
-            }
-        )
-        self._speaking = True
+    async def _speak(self, text: str, language: str, card_id: str) -> float | None:
+        """Stream TTS as it's synthesized. Returns when the first audio went out, if any.
+
+        A TTS failure before any audio leaves the card up without speech; a failure midway
+        ends the speech early. Either way the device gets an honest `speech_end`.
+        """
         lead = self.deps.speech_lead_s
-        began = time.monotonic()
+        began = 0.0
         sent_seconds = 0.0
-        for frame in p.chunk_pcm(pcm):
+        pending = bytearray()
+
+        async def send_frame(frame: bytes) -> None:
+            nonlocal sent_seconds
             if lead is not None:
                 ahead = sent_seconds - (time.monotonic() - began) - lead
                 if ahead > 0:
                     await asyncio.sleep(ahead)
             await self.send_raw(frame)
             sent_seconds += len(frame) / p.BYTES_PER_SECOND
+
+        try:
+            async for chunk in self.deps.tts.stream(text, language):
+                if not self._speaking:
+                    await self.send_state("speaking")
+                    await self.send(
+                        {
+                            "type": "speech_start",
+                            "rate": p.SAMPLE_RATE,
+                            "format": p.SAMPLE_FORMAT,
+                            "channels": p.CHANNELS,
+                            "card_id": card_id,
+                        }
+                    )
+                    self._speaking = True
+                    began = time.monotonic()
+                pending.extend(chunk)
+                while len(pending) >= p.MAX_BINARY_FRAME:
+                    await send_frame(bytes(pending[: p.MAX_BINARY_FRAME]))
+                    del pending[: p.MAX_BINARY_FRAME]
+        except TTSError as exc:
+            log.warning("tts failed: %s", exc)
+        if not self._speaking:
+            return None
+        tail = bytes(pending[: len(pending) - len(pending) % 2])
+        if tail:
+            await send_frame(tail)
         self._speaking = False
         await self.send({"type": "speech_end"})
+        return began
 
     async def close(self) -> None:
         if self._job is not None and not self._job.done():

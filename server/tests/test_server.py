@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
@@ -127,6 +128,22 @@ async def test_talk_flow_in_protocol_order(harness: Harness) -> None:
     await dev.send({"type": "displayed", "id": card["id"]})
     await dev.send({"type": "ping"})
     assert await dev.recv() == {"type": "pong"}
+
+
+async def test_tts_failure_midway_ends_speech_honestly(harness: Harness) -> None:
+    from charm_server.tts import TTSError
+
+    class DyingTTS(FakeTTS):
+        async def stream(self, text: str, language: str) -> AsyncIterator[bytes]:
+            yield tone(0.5)
+            raise TTSError("connection reset")
+
+    harness.deps.tts = DyingTTS()
+    dev = await harness.device()
+    await dev.talk(tone(1.0))
+    frames = await dev.until_idle()
+    assert types(frames)[-4:] == ["speech_start", "<pcm>", "speech_end", "state:idle"]
+    assert sum(len(f) for f in frames if isinstance(f, bytes)) == len(tone(0.5))
 
 
 async def test_limit_reason_is_processed_like_released(harness: Harness) -> None:
@@ -310,8 +327,9 @@ async def test_tts_failure_leaves_the_card_without_speech(harness: Harness) -> N
     from charm_server.tts import TTSError
 
     class BrokenTTS(FakeTTS):
-        async def synthesize(self, text: str, language: str) -> bytes:
+        async def stream(self, text: str, language: str) -> AsyncIterator[bytes]:
             raise TTSError("no audio")
+            yield b""
 
     harness.deps.tts = BrokenTTS()
     dev = await harness.device()
