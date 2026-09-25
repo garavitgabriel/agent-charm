@@ -1,0 +1,17 @@
+{
+  "name": "charm_ui",
+  "version": "0.0.0",
+  "description": "The shared Dex Charm LVGL UI, compiled from ../ui (outside this project). Owned by the UI/simulator batch; the firmware only links it. Whatever ../ui/*.cpp holds builds unchanged.",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": {
+    "srcDir": "../../../ui",
+    "includeDir": "../../../ui",
+    "srcFilter": ["+<*.cpp>", "+<*.c>"],
+    "flags": ["-DLV_CONF_INCLUDE_SIMPLE"]
+  },
+  "dependencies": {
+    "lvgl/lvgl": "8.3.11",
+    "bblanchon/ArduinoJson": "7.4.2"
+  }
+}

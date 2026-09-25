@@ -64,6 +64,9 @@ void pump_talk(uint32_t now) {
     if (talk.expired(now)) {  // 25 s: the host ends the talk itself
         end_talk("limit");
         charm_ui_mic_level(0.0f);
+        // Tell the UI the mic is off so it leaves "listening" (honesty invariant). The UI answers
+        // with charm_host_mic_stop("released"), a no-op now that the talk has ended.
+        charm_ui_talk_released();
         return;
     }
     if (now - last_level >= 50) {
