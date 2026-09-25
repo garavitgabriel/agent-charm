@@ -122,6 +122,11 @@ These are additive; nothing breaks. The device and UI must treat them as the con
    deadline). Until one does, pending items appear as rows on the `waiting` edition card, with no
    action buttons. A structured `pending[]` feed on the Hermes side is a follow-up.
 
+9. **With a streamed answer, the `card{kind:"answer"}` may arrive after `speech_start`, during speech**
+   (the server starts speaking at Dex's first sentence and sends the card once the answer is complete).
+   The device must accept a card in any order relative to speech. The talk-flow diagram above shows
+   the slow-path order.
+
 ## Versioning
 
 This is v0. The protocol version travels in `hello.fw` and `welcome.server` (e.g. `"charm-server/0.1 proto/0"`).
