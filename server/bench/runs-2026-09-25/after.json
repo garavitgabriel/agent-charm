@@ -1,0 +1,309 @@
+{
+  "rows": [
+    {
+      "language": "en",
+      "question": "What is the difference between a metaphor and a simile?",
+      "exit": 0,
+      "wall": 17.45,
+      "stt": 0.79,
+      "agent": 3.27,
+      "tts": 3.77,
+      "first_audio": 7.83,
+      "total": 15.79,
+      "server": {
+        "stt": 0.79,
+        "agent_first": 2.41,
+        "agent": 3.27,
+        "tts": 4.11,
+        "first_audio": 7.83,
+        "total": 15.79
+      }
+    },
+    {
+      "language": "en",
+      "question": "Why is the sky blue?",
+      "exit": 0,
+      "wall": 24.3,
+      "stt": 0.62,
+      "agent": 3.17,
+      "tts": 5.36,
+      "first_audio": 9.14,
+      "total": 23.12,
+      "server": {
+        "stt": 0.62,
+        "agent_first": 2.05,
+        "agent": 3.16,
+        "tts": 5.93,
+        "first_audio": 9.14,
+        "total": 23.12
+      }
+    },
+    {
+      "language": "en",
+      "question": "How do I make a good cup of pour-over coffee?",
+      "exit": 0,
+      "wall": 31.53,
+      "stt": 0.67,
+      "agent": 5.2,
+      "tts": 7.11,
+      "first_audio": 12.98,
+      "total": 30.41,
+      "server": {
+        "stt": 0.67,
+        "agent_first": 4.15,
+        "agent": 5.19,
+        "tts": 7.88,
+        "first_audio": 12.98,
+        "total": 30.41
+      }
+    },
+    {
+      "language": "en",
+      "question": "What is a good way to fall asleep faster?",
+      "exit": 0,
+      "wall": 27.44,
+      "stt": 0.72,
+      "agent": 4.51,
+      "tts": 4.95,
+      "first_audio": 10.18,
+      "total": 26.2,
+      "server": {
+        "stt": 0.72,
+        "agent_first": 3.22,
+        "agent": 4.51,
+        "tts": 5.78,
+        "first_audio": 10.18,
+        "total": 26.2
+      }
+    },
+    {
+      "language": "en",
+      "question": "Explain compound interest in simple terms.",
+      "exit": 0,
+      "wall": 28.52,
+      "stt": 0.62,
+      "agent": 3.02,
+      "tts": 7.42,
+      "first_audio": 11.06,
+      "total": 27.47,
+      "server": {
+        "stt": 0.62,
+        "agent_first": 1.8,
+        "agent": 3.02,
+        "tts": 8.21,
+        "first_audio": 11.06,
+        "total": 27.47
+      }
+    },
+    {
+      "language": "es",
+      "question": "¿Qué diferencia hay entre una metáfora y un símil?",
+      "exit": 0,
+      "wall": 17.67,
+      "stt": 0.7,
+      "agent": 4.23,
+      "tts": 1.14,
+      "first_audio": 6.07,
+      "total": 16.47,
+      "server": {
+        "stt": 0.7,
+        "agent_first": 3.37,
+        "agent": 4.23,
+        "tts": 1.78,
+        "first_audio": 6.07,
+        "total": 16.47
+      }
+    },
+    {
+      "language": "es",
+      "question": "¿Por qué el cielo es azul?",
+      "exit": 0,
+      "wall": 19.45,
+      "stt": 0.66,
+      "agent": 4.71,
+      "tts": 1.14,
+      "first_audio": 6.51,
+      "total": 18.44,
+      "server": {
+        "stt": 0.66,
+        "agent_first": 3.73,
+        "agent": 4.71,
+        "tts": 1.84,
+        "first_audio": 6.51,
+        "total": 18.44
+      }
+    },
+    {
+      "language": "es",
+      "question": "¿Cómo preparo un buen café colado?",
+      "exit": 0,
+      "wall": 23.87,
+      "stt": 0.62,
+      "agent": 4.87,
+      "tts": 0.75,
+      "first_audio": 6.24,
+      "total": 23.03,
+      "server": {
+        "stt": 0.62,
+        "agent_first": 3.57,
+        "agent": 4.87,
+        "tts": 1.81,
+        "first_audio": 6.24,
+        "total": 23.03
+      }
+    },
+    {
+      "language": "es",
+      "question": "¿Qué puedo hacer para dormirme más rápido?",
+      "exit": 0,
+      "wall": 27.47,
+      "stt": 0.62,
+      "agent": 5.21,
+      "tts": 1.51,
+      "first_audio": 7.33,
+      "total": 26.43,
+      "server": {
+        "stt": 0.62,
+        "agent_first": 3.28,
+        "agent": 5.2,
+        "tts": 2.84,
+        "first_audio": 7.33,
+        "total": 26.43
+      }
+    },
+    {
+      "language": "es",
+      "question": "Explícame el interés compuesto en palabras sencillas.",
+      "exit": 0,
+      "wall": 17.4,
+      "stt": 0.64,
+      "agent": 3.97,
+      "tts": 1.3,
+      "first_audio": 5.91,
+      "total": 16.43,
+      "server": {
+        "stt": 0.64,
+        "agent_first": 2.95,
+        "agent": 3.96,
+        "tts": 2.07,
+        "first_audio": 5.91,
+        "total": 16.43
+      }
+    }
+  ],
+  "summary": {
+    "client": {
+      "stt": {
+        "median": 0.65,
+        "p90": 0.72,
+        "n": 10
+      },
+      "agent": {
+        "median": 4.37,
+        "p90": 5.2,
+        "n": 10
+      },
+      "tts": {
+        "median": 2.64,
+        "p90": 7.11,
+        "n": 10
+      },
+      "first_audio": {
+        "median": 7.58,
+        "p90": 11.06,
+        "n": 10
+      },
+      "total": {
+        "median": 23.08,
+        "p90": 27.47,
+        "n": 10
+      }
+    },
+    "server": {
+      "agent": {
+        "median": 4.37,
+        "p90": 5.19,
+        "n": 10
+      },
+      "agent_first": {
+        "median": 3.25,
+        "p90": 3.73,
+        "n": 10
+      },
+      "first_audio": {
+        "median": 7.58,
+        "p90": 11.06,
+        "n": 10
+      },
+      "stt": {
+        "median": 0.65,
+        "p90": 0.72,
+        "n": 10
+      },
+      "total": {
+        "median": 23.08,
+        "p90": 27.47,
+        "n": 10
+      },
+      "tts": {
+        "median": 3.48,
+        "p90": 7.88,
+        "n": 10
+      }
+    },
+    "client_en": {
+      "stt": {
+        "median": 0.67,
+        "p90": 0.79,
+        "n": 5
+      },
+      "agent": {
+        "median": 3.27,
+        "p90": 5.2,
+        "n": 5
+      },
+      "tts": {
+        "median": 5.36,
+        "p90": 7.42,
+        "n": 5
+      },
+      "first_audio": {
+        "median": 10.18,
+        "p90": 12.98,
+        "n": 5
+      },
+      "total": {
+        "median": 26.2,
+        "p90": 30.41,
+        "n": 5
+      }
+    },
+    "client_es": {
+      "stt": {
+        "median": 0.64,
+        "p90": 0.7,
+        "n": 5
+      },
+      "agent": {
+        "median": 4.71,
+        "p90": 5.21,
+        "n": 5
+      },
+      "tts": {
+        "median": 1.14,
+        "p90": 1.51,
+        "n": 5
+      },
+      "first_audio": {
+        "median": 6.24,
+        "p90": 7.33,
+        "n": 5
+      },
+      "total": {
+        "median": 18.44,
+        "p90": 26.43,
+        "n": 5
+      }
+    }
+  }
+}
