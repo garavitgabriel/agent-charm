@@ -741,6 +741,9 @@ void on_error(JsonObjectConst msg) {
     S.error_code = msg["code"] | "unknown";
     S.error_text = msg["text"] | "";
     S.sending = false;
+    // The action in flight failed (e.g. a too_short money hold): the card stays and can be retried.
+    for (HeldCard &c : S.cards) c.sent_action.clear();
+    for (HeldCard &c : S.editions) c.sent_action.clear();
     activity();
 }
 

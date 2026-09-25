@@ -626,6 +626,84 @@ static void test_hidden_card_and_home_tap() {
     CHECK_EQ(displayed_count("dec-001"), 1);
 }
 
+// docs/PROTOCOL.md clarifications (2026-09-25): errors are followed by state{idle}; a rejected money
+// hold leaves the card retryable; a fixture confirm comes back as a notice with no check.
+static void test_protocol_clarifications() {
+    fresh();
+    feed("{\"type\":\"error\",\"code\":\"agent_timeout\",\"text\":\"Dex didn't answer.\"}");
+    feed("{\"type\":\"state\",\"value\":\"idle\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Error);  // the idle doesn't hide the error
+
+    fresh();
+    feed_example("money.json");
+    run(20);
+    press(charm_ui_debug_action_button("confirm"));
+    run(2100);
+    sim_pointer_set(0, 0, false);
+    run(40);
+    CHECK_EQ(sent_of("action").size(), (size_t)1);
+    CHECK(charm_ui_debug_action_button("confirm") == nullptr);
+    feed("{\"type\":\"error\",\"code\":\"too_short\",\"text\":\"Hold for 2 seconds.\"}");
+    feed("{\"type\":\"state\",\"value\":\"idle\"}");
+    charm_ui_debug_tap();
+    run(20);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Money);  // the card stayed in place
+    CHECK(charm_ui_debug_action_button("confirm") != nullptr);  // and can be held again
+
+    fresh();
+    feed_example("money.json");
+    run(20);
+    press(charm_ui_debug_action_button("confirm"));
+    run(2100);
+    sim_pointer_set(0, 0, false);
+    run(40);
+    feed_card("{\"id\":\"order-001\",\"kind\":\"notice\",\"title\":\"Sample order: nothing was charged\","
+              "\"source\":\"delivery\",\"created_at\":\"2026-09-25T18:00:00-05:00\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Answer);
+    CHECK_EQ(charm_ui_debug_card_count(), (size_t)1);
+    CHECK(!charm_ui_debug_done_shown());
+    CHECK_EQ(displayed_count("order-001"), 2);
+
+    // An edition section with only a failure footer and no edition_no still renders, labeled stale.
+    fresh();
+    charm_ui_debug_swipe(LV_DIR_LEFT);
+    run(20);
+    feed_card("{\"id\":\"ed-sports\",\"kind\":\"edition\",\"title\":\"Sports desk\",\"source\":\"edition\","
+              "\"created_at\":\"2026-09-25T18:00:00-05:00\",\"stale\":true,"
+              "\"footer\":\"Sports desk missed deadline - last filed 04:10\",\"data\":{\"section\":\"sports\"}}");
+    CHECK_EQ(charm_ui_debug_edition_section(), std::string("sports"));
+    CHECK(charm_ui_debug_stale_shown());
+}
+
+// The UI lives in LVGL's 96 KB pool on the device: the heaviest surface must fit with headroom, and
+// rebuilding surfaces over and over must not leak.
+static void test_lvgl_memory() {
+    fresh();
+    lv_mem_monitor_t m;
+    feed_example("money.json");
+    feed_example("decision.json");
+    feed_example("job.json");
+    run(40);
+    lv_mem_monitor(&m);
+    const size_t used_start = m.total_size - m.free_size;
+    CHECK(m.used_pct < 60);
+    for (int i = 0; i < 100; i++) {
+        feed("{\"type\":\"state\",\"value\":\"working\"}");
+        feed("{\"type\":\"state\",\"value\":\"idle\"}");
+        feed_example("decision.json");
+        charm_ui_debug_swipe(LV_DIR_BOTTOM);
+        run(10);
+        charm_ui_debug_tap();
+        run(10);
+    }
+    run(40);
+    lv_mem_monitor(&m);
+    const size_t used_end = m.total_size - m.free_size;
+    CHECK(used_end <= used_start + 1024);  // allow fragmentation slack, not growth
+    fprintf(stderr, "  lvgl pool: %u%% used, %u bytes free of %u\n", (unsigned)m.used_pct, (unsigned)m.free_size,
+            (unsigned)m.total_size);
+}
+
 int main() {
     sim_display_init();
     struct {
@@ -651,6 +729,8 @@ int main() {
         {"working_cancel_and_interrupt", test_working_cancel_and_interrupt},
         {"night_and_modes", test_night_and_modes},
         {"hidden_card_and_home_tap", test_hidden_card_and_home_tap},
+        {"protocol_clarifications", test_protocol_clarifications},
+        {"lvgl_memory", test_lvgl_memory},
     };
     for (auto &t : tests) {
         g_test = t.name;
