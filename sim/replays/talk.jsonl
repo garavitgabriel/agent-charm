@@ -1,0 +1,24 @@
+# A spoken question, Dex's answer, a decision confirmed by the backend, then the edition.
+{"type":"welcome","server":"charm-server/0.1 proto/0","time":"2026-09-25T18:00:00-05:00","tz":"America/Chicago"}
+{"type":"state","value":"idle"}
+{"_sim":"talk","value":"press"}
+{"_sim":"wait","ms":2500}
+{"_sim":"talk","value":"release"}
+{"type":"state","value":"transcribing"}
+{"type":"transcript","text":"What's the difference between a metaphor and a simile?","final":true}
+{"type":"state","value":"working","agent":"dex"}
+{"type":"card","card":{"id":"ans-001","kind":"answer","title":"Metaphor vs simile","body":"A simile compares with 'like' or 'as' (brave as a lion). A metaphor states it outright (he is a lion). Same image; the metaphor commits harder.","source":"dex","created_at":"2026-09-25T18:00:00-05:00","footer":"Full version in Telegram"}}
+{"type":"speech_start","rate":16000,"format":"s16le","channels":1,"card_id":"ans-001"}
+{"_sim":"wait","ms":3000}
+{"type":"speech_end"}
+{"type":"state","value":"idle"}
+{"type":"dismiss","card_id":"ans-001"}
+{"type":"mode","value":"gameday"}
+{"type":"card","card":{"id":"dec-001","kind":"decision","title":"Pause the side project?","body":"Eight weeks without a commit.","source":"dex","created_at":"2026-09-25T18:00:00-05:00","data":{"default":"Yes, pause","deadline":"Sunday"},"actions":[{"id":"approve","label":"Pause it","style":"primary"},{"id":"reject","label":"Keep it","style":"secondary"},{"id":"snooze","label":"Later","style":"secondary"}]}}
+{"type":"state","value":"done","label":"Paused"}
+{"type":"dismiss","card_id":"dec-001"}
+{"type":"mode","value":"default"}
+{"type":"card","card":{"id":"ntc-001","kind":"notice","title":"Desk missed deadline","body":"The sports desk last filed 14 hours ago.","source":"system","created_at":"2026-09-25T18:00:00-05:00","stale":true}}
+{"type":"dismiss","card_id":"ntc-001"}
+{"type":"error","code":"busy","text":"A job is already running."}
+{"type":"pong"}
