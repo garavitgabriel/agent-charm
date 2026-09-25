@@ -42,9 +42,9 @@ No device is attached during this build, so nothing here has been flashed yet. W
 is plugged in:
 
 1. **Back up the current flash first.** It's running Margin now. Margin's docs say its original
-   factory image was saved to `margin/.local/backups/original-2026-09-08.bin`, but that
-   file wasn't there on 2026-09-25. So take a fresh full backup, and keep it **outside any git
-   repo**:
+   factory image is on the **Mac mini** at `margin/.local/backups/original-2026-09-08.bin`
+   (it's private and not copied to other machines; there's a `.sha256` next to it). Still take a fresh
+   full backup of the Margin image before flashing, and keep it **outside any git repo**:
 
    ```sh
    ls /dev/cu.usbmodem*        # find the port (it was /dev/cu.usbmodem11301 for Margin)
