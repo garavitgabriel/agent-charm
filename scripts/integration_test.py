@@ -62,6 +62,50 @@ async def run_sim(sim: str, url: str, token: str, *extra: str) -> tuple[int, str
     return proc.returncode or 0, out.decode(), err.decode()
 
 
+async def wait_for_line(stream: asyncio.StreamReader, needle: str, seconds: float) -> None:
+    async with asyncio.timeout(seconds):
+        while True:
+            line = (await stream.readline()).decode()
+            if not line:
+                raise Failed(f"the sim exited before printing {needle!r}")
+            sys.stderr.write(line)
+            if needle in line:
+                return
+
+
+async def reconnect(sim: str, deps: Deps, port: int) -> None:
+    """The server goes away and comes back on the same port: the sim goes offline, then back."""
+    server = await start(deps, "127.0.0.1", port)
+    proc = await asyncio.create_subprocess_exec(
+        sim,
+        "--connect",
+        f"ws://127.0.0.1:{port}/charm",
+        "--headless",
+        "--timeout",
+        "20000",
+        env={**os.environ, "CHARM_TOKEN": TOKEN},
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    assert proc.stderr is not None
+    try:
+        await wait_for_line(proc.stderr, "welcome: online", 5)
+        server.close()
+        await server.wait_closed()
+        await wait_for_line(proc.stderr, "[net] down", 5)
+        check(True, "the sim noticed the server going away")
+        server = await start(deps, "127.0.0.1", port)
+        await wait_for_line(proc.stderr, "welcome: online", 10)
+        check(True, "the sim reconnected with backoff and was welcomed again")
+    except TimeoutError:
+        check(False, "the sim reconnected in time")
+    finally:
+        proc.terminate()
+        await proc.wait()
+        server.close()
+        await server.wait_closed()
+
+
 async def main(sim: str) -> int:
     stt, agent, tts = FakeSTT(), FakeAgent(), FakeTTS()
     with tempfile.TemporaryDirectory() as tmp:
@@ -128,6 +172,11 @@ async def main(sim: str) -> int:
         finally:
             server.close()
             await server.wait_closed()
+        try:
+            print("server restart")
+            await reconnect(sim, deps, port)
+        except Failed:
+            return 1
     print("sim_live_integration: pass")
     return 0
 

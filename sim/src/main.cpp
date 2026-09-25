@@ -10,6 +10,7 @@
 //     --mic-wav FILE use a 16 kHz mono s16 WAV instead of the mic (played in real time while held)
 //     --auto-talk    hold the talk button once when the server welcomes us (ends with the WAV)
 //     --trace        print server text frames to stderr
+//     --quit-after-reply  close the window once the reply has finished playing (scripted runs)
 //     --headless     no window, no speakers: exit after the reply (or --timeout MS, default 60000)
 // Device->server frames print to stdout as JSON lines; host notes go to stderr.
 #include "charm_ui.h"
@@ -37,7 +38,7 @@ void usage() {
     fprintf(stderr,
             "usage: charm-sim [--scale N] [--replay FILE.jsonl [--interval MS] [--headless]] [--shots DIR]\n"
             "       charm-sim --connect ws://HOST:PORT/charm [--token T] [--mic-wav FILE] [--auto-talk]\n"
-            "                 [--trace] [--scale N | --headless [--timeout MS]]\n");
+            "                 [--trace] [--quit-after-reply] [--scale N | --headless [--timeout MS]]\n");
 }
 
 void help_keys() {
@@ -96,6 +97,7 @@ int main(int argc, char **argv) {
     uint32_t interval = 700;
     uint32_t timeout_ms = 60000;
     const char *mic_wav = nullptr;
+    bool quit_after_reply = false;
     SimLiveOptions live;
     if (const char *t = getenv("CHARM_TOKEN")) live.token = t;
     for (int i = 1; i < argc; i++) {
@@ -112,6 +114,7 @@ int main(int argc, char **argv) {
         else if (a == "--timeout" && has_next) timeout_ms = (uint32_t)atoi(argv[++i]);
         else if (a == "--auto-talk") live.auto_talk = true;
         else if (a == "--trace") live.trace = true;
+        else if (a == "--quit-after-reply") quit_after_reply = true;
         else {
             usage();
             return 2;
@@ -193,6 +196,7 @@ int main(int argc, char **argv) {
     bool running = true;
     bool mouse_down = false;
     uint32_t last = charm_host_millis();
+    uint32_t reply_quiet_since = 0;
     while (running && !stop_requested) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
@@ -244,6 +248,10 @@ int main(int argc, char **argv) {
 
         const uint32_t now = charm_host_millis();
         sim_live_pump(now);
+        if (connect && quit_after_reply && sim_live_reply_done() && !sim_speaker_active()) {
+            if (!reply_quiet_since) reply_quiet_since = now;
+            if (now - reply_quiet_since >= 1000) running = false;
+        }
         if (replay_file.is_open() && now >= next_replay) {
             std::string line;
             if (std::getline(replay_file, line)) {
