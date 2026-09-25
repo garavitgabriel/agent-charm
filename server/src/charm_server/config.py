@@ -60,6 +60,7 @@ class Config:
     voice_en: str
     voice_es: str
     whisper_model: str
+    hermes_channel: bool = True
 
     @classmethod
     def from_env(cls, env_file: Path | None = SERVER_DIR / ".env") -> Config:
@@ -79,4 +80,6 @@ class Config:
             voice_en=env.get("CHARM_VOICE_EN", "en-US-AndrewNeural"),
             voice_es=env.get("CHARM_VOICE_ES", "es-CO-GonzaloNeural"),
             whisper_model=env.get("CHARM_WHISPER_MODEL", "base"),
+            hermes_channel=env.get("HERMES_CHANNEL", "1").strip().lower()
+            not in ("0", "false", "no"),
         )

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Protocol
 
@@ -79,10 +80,13 @@ class EdgeTTS:
 
         async def feed() -> None:
             nonlocal mp3_bytes
+            asked = time.monotonic()
             try:
                 communicate = edge_tts.Communicate(text, self.voice_for(language))
                 async for chunk in communicate.stream():
                     if chunk.get("type") == "audio":
+                        if not mp3_bytes:
+                            log.info("edge-tts first chunk in %.2fs", time.monotonic() - asked)
                         mp3_bytes += len(chunk["data"])
                         stdin.write(chunk["data"])
                         await stdin.drain()

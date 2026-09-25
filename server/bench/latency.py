@@ -37,9 +37,10 @@ QUESTIONS: list[tuple[str, str, str | None]] = [
     ("es", "Explícame el interés compuesto en palabras sencillas.", "Mónica"),
 ]
 
+_N = r"-?[\d.]+|n/a"  # tts can be negative: speech may start before the answer is complete
 CLIENT_LINE = re.compile(
-    r"stt (?P<stt>[\d.]+|n/a)s? · agent (?P<agent>[\d.]+|n/a)s? · tts (?P<tts>[\d.]+|n/a)s? · "
-    r"first audio (?P<first_audio>[\d.]+|n/a)s? · total (?P<total>[\d.]+|n/a)s?"
+    rf"stt (?P<stt>{_N})s? · agent (?P<agent>{_N})s? · tts (?P<tts>{_N})s? · "
+    rf"first audio (?P<first_audio>{_N})s? · total (?P<total>{_N})s?"
 )
 SERVER_FIELD = re.compile(r"(\w+)=([\d.]+)s")
 
