@@ -18,9 +18,10 @@ from websockets.http11 import Request, Response
 
 from . import SERVER_ID
 from . import protocol as p
-from .agent import HermesAgent
+from .agent import Agent, HermesAgent
 from .cards import CardValidator
 from .config import Config
+from .hermes import HermesChannel
 from .session import Deps, Session
 from .stt import WhisperSTT
 from .tts import EdgeTTS
@@ -115,25 +116,41 @@ async def start(deps: Deps, host: str, port: int) -> Server:
 
 async def run(config: Config, warm: bool) -> None:
     stt = WhisperSTT(config.whisper_model)
+    channel: HermesChannel | None = None
+    agent: Agent
+    if config.hermes_channel:
+        channel = HermesChannel(config.hermes_ssh_alias, config.hermes_container)
+        agent = channel
+    else:
+        agent = HermesAgent(config.hermes_ssh_alias, config.hermes_container)
     deps = Deps(
         config=config,
         stt=stt,
-        agent=HermesAgent(config.hermes_ssh_alias, config.hermes_container),
+        agent=agent,
         tts=EdgeTTS(config.voice_en, config.voice_es),
         validator=CardValidator(config.schema_path),
     )
-    if warm:
-        await asyncio.to_thread(stt.load)
-    async with await start(deps, config.host, config.port) as server:
-        log.info(
-            "%s listening on ws://%s:%d%s (cards: %s)",
-            SERVER_ID,
-            config.host,
-            config.port,
-            p.PATH,
-            config.cards_dir,
-        )
-        await server.serve_forever()
+    try:
+        warmups = []
+        if channel is not None:
+            warmups.append(channel.start())  # opens the SSH channel to Dex while Whisper loads
+        if warm:
+            warmups.append(asyncio.to_thread(stt.load))
+        await asyncio.gather(*warmups)
+        async with await start(deps, config.host, config.port) as server:
+            log.info(
+                "%s listening on ws://%s:%d%s (cards: %s, dex: %s)",
+                SERVER_ID,
+                config.host,
+                config.port,
+                p.PATH,
+                config.cards_dir,
+                "persistent channel" if channel else "ssh per question",
+            )
+            await server.serve_forever()
+    finally:
+        if channel is not None:
+            await channel.close()
 
 
 def main() -> None:

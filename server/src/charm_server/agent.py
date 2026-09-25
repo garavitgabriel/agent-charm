@@ -16,7 +16,8 @@ import base64
 import contextlib
 import json
 import logging
-from typing import Protocol
+from collections.abc import AsyncIterator
+from typing import Protocol, runtime_checkable
 
 log = logging.getLogger(__name__)
 
@@ -77,6 +78,24 @@ class AgentError(Exception):
 
 class Agent(Protocol):
     async def reply(self, messages: list[Message]) -> str: ...
+
+
+@runtime_checkable
+class StreamingAgent(Protocol):
+    """An agent that can also hand over its answer piece by piece as it's generated."""
+
+    async def reply(self, messages: list[Message]) -> str: ...
+
+    def stream(self, messages: list[Message]) -> AsyncIterator[str]: ...
+
+
+async def answer_stream(agent: Agent, messages: list[Message]) -> AsyncIterator[str]:
+    """The answer as text pieces: streamed when the agent can, else the whole reply at once."""
+    if isinstance(agent, StreamingAgent):
+        async for piece in agent.stream(messages):
+            yield piece
+        return
+    yield await agent.reply(messages)
 
 
 def system_messages(language: str) -> list[Message]:

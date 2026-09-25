@@ -1,0 +1,187 @@
+{
+  "rows": [
+    {
+      "language": "en",
+      "question": "What is the difference between a metaphor and a simile?",
+      "exit": 0,
+      "wall": 16.71,
+      "stt": 0.76,
+      "agent": 4.31,
+      "tts": 1.63,
+      "first_audio": 6.7,
+      "total": 15.56,
+      "server": {
+        "stt": 0.76,
+        "agent_first": 3.07,
+        "agent": 4.31,
+        "tts": 1.73,
+        "first_audio": 6.7,
+        "total": 15.56
+      }
+    },
+    {
+      "language": "en",
+      "question": "Why is the sky blue?",
+      "exit": 0,
+      "wall": 19.91,
+      "stt": 0.61,
+      "agent": 4.63,
+      "tts": 1.0,
+      "first_audio": 6.24,
+      "total": 18.81,
+      "server": {
+        "stt": 0.61,
+        "agent_first": 3.53,
+        "agent": 4.63,
+        "tts": 1.81,
+        "first_audio": 6.24,
+        "total": 18.81
+      }
+    },
+    {
+      "language": "en",
+      "question": "How do I make a good cup of pour-over coffee?",
+      "exit": 0,
+      "wall": 28.99,
+      "stt": 0.66,
+      "agent": 4.19,
+      "tts": 1.84,
+      "first_audio": 6.69,
+      "total": 27.83,
+      "server": {
+        "stt": 0.66,
+        "agent_first": 2.69,
+        "agent": 4.19,
+        "tts": 2.75,
+        "first_audio": 6.69,
+        "total": 27.83
+      }
+    },
+    {
+      "language": "en",
+      "question": "What is a good way to fall asleep faster?",
+      "exit": 0,
+      "wall": 22.69,
+      "stt": 0.62,
+      "agent": 4.6,
+      "tts": 1.12,
+      "first_audio": 6.34,
+      "total": 21.6,
+      "server": {
+        "stt": 0.62,
+        "agent_first": 3.55,
+        "agent": 4.6,
+        "tts": 1.91,
+        "first_audio": 6.34,
+        "total": 21.6
+      }
+    },
+    {
+      "language": "en",
+      "question": "Explain compound interest in simple terms.",
+      "exit": 0,
+      "wall": 17.27,
+      "stt": 0.65,
+      "agent": 5.17,
+      "tts": 1.32,
+      "first_audio": 7.13,
+      "total": 16.11,
+      "server": {
+        "stt": 0.65,
+        "agent_first": 3.98,
+        "agent": 5.17,
+        "tts": 2.24,
+        "first_audio": 7.13,
+        "total": 16.11
+      }
+    }
+  ],
+  "summary": {
+    "client": {
+      "stt": {
+        "median": 0.65,
+        "p90": 0.76,
+        "n": 5
+      },
+      "agent": {
+        "median": 4.6,
+        "p90": 5.17,
+        "n": 5
+      },
+      "tts": {
+        "median": 1.32,
+        "p90": 1.84,
+        "n": 5
+      },
+      "first_audio": {
+        "median": 6.69,
+        "p90": 7.13,
+        "n": 5
+      },
+      "total": {
+        "median": 18.81,
+        "p90": 27.83,
+        "n": 5
+      }
+    },
+    "server": {
+      "agent": {
+        "median": 4.6,
+        "p90": 5.17,
+        "n": 5
+      },
+      "agent_first": {
+        "median": 3.53,
+        "p90": 3.98,
+        "n": 5
+      },
+      "first_audio": {
+        "median": 6.69,
+        "p90": 7.13,
+        "n": 5
+      },
+      "stt": {
+        "median": 0.65,
+        "p90": 0.76,
+        "n": 5
+      },
+      "total": {
+        "median": 18.81,
+        "p90": 27.83,
+        "n": 5
+      },
+      "tts": {
+        "median": 1.91,
+        "p90": 2.75,
+        "n": 5
+      }
+    },
+    "client_en": {
+      "stt": {
+        "median": 0.65,
+        "p90": 0.76,
+        "n": 5
+      },
+      "agent": {
+        "median": 4.6,
+        "p90": 5.17,
+        "n": 5
+      },
+      "tts": {
+        "median": 1.32,
+        "p90": 1.84,
+        "n": 5
+      },
+      "first_audio": {
+        "median": 6.69,
+        "p90": 7.13,
+        "n": 5
+      },
+      "total": {
+        "median": 18.81,
+        "p90": 27.83,
+        "n": 5
+      }
+    }
+  }
+}
