@@ -1,0 +1,158 @@
+"""Dex, reached the way Margin reaches Hermes.
+
+Provenance: the SSH -> `docker exec` -> container-local `/v1/chat/completions` pattern and the
+in-container script below are adapted from Margin's `bridge.py` (`margin/bridge.py`,
+commit 1b491367fd4a53018814e3f609fbe194e8ff5825; the owner's own local repo, no separate
+license). The API key is read inside the container and never leaves the VPS.
+
+Read and converse only: this module sends chat messages and reads the reply. It never changes
+Hermes config, crons, skills or the charter, and the persona forbids tools and actions.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+import contextlib
+import json
+import logging
+from typing import Protocol
+
+log = logging.getLogger(__name__)
+
+Message = dict[str, str]
+
+LANGUAGE_NAMES = {"en": "English", "es": "Spanish"}
+
+PERSONA = (
+    "You are Dex, the owner's agent, speaking through the Dex Charm: a small pocket device with a "
+    "tiny screen and a speaker. This channel is conversation only: do not run tools, take "
+    "actions, send messages, change files, place orders or save memories. If a request needs an "
+    "action, say plainly that the charm can't do that yet. Answer in plain text with no markdown, "
+    "lists or emoji. Lead with the answer. Keep it to 2 or 3 short sentences, at most 60 words; "
+    "the first two sentences are spoken aloud, so they must stand alone. Always reply in the same "
+    "language as the question. Do not praise the question and do not invent facts."
+)
+
+# Runs inside the Hermes container (adapted from margin/bridge.py REMOTE).
+REMOTE = r"""
+import base64,json,urllib.request,urllib.error
+from pathlib import Path
+settings={}
+for line in Path('/opt/data/.env').read_text().splitlines():
+    if '=' in line and not line.lstrip().startswith('#'):
+        key,value=line.split('=',1)
+        settings[key.strip()]=value.strip().strip(chr(34)+chr(39))
+key=settings.get('API_SERVER_KEY')
+if not key:
+    print(json.dumps({'error':'Hermes API authentication is not configured.'}))
+    raise SystemExit(1)
+payload=base64.b64decode('__PAYLOAD__')
+request=urllib.request.Request('http://127.0.0.1:8642/v1/chat/completions',
+    data=payload,headers={'Authorization':'Bearer '+key,'Content-Type':'application/json'},method='POST')
+try:
+    with urllib.request.urlopen(request,timeout=__HTTP_TIMEOUT__) as response:
+        result=json.load(response)
+    choices=result.get('choices',[])
+    text=choices[0].get('message',{}).get('content') if choices else None
+    if not isinstance(text,str) or not text.strip():
+        raise ValueError('No text answer')
+    print(json.dumps({'text':text.strip()},ensure_ascii=False))
+except urllib.error.HTTPError as exc:
+    print(json.dumps({'error':'Hermes returned HTTP '+str(exc.code)+'.'}))
+    raise SystemExit(1)
+except Exception as exc:
+    print(json.dumps({'error':'Hermes did not return a text answer ('+type(exc).__name__+').'}))
+    raise SystemExit(1)
+"""
+
+
+class AgentTimeout(Exception):
+    pass
+
+
+class AgentError(Exception):
+    pass
+
+
+class Agent(Protocol):
+    async def reply(self, messages: list[Message]) -> str: ...
+
+
+def system_messages(language: str) -> list[Message]:
+    name = LANGUAGE_NAMES.get(language)
+    messages = [{"role": "system", "content": PERSONA}]
+    if name:
+        messages.append({"role": "system", "content": f"The question was spoken in {name}."})
+    return messages
+
+
+def build_remote_script(messages: list[Message], http_timeout: float) -> str:
+    payload = json.dumps({"model": "hermes-agent", "messages": messages, "stream": False})
+    encoded = base64.b64encode(payload.encode()).decode()
+    return REMOTE.replace("__PAYLOAD__", encoded).replace("__HTTP_TIMEOUT__", str(http_timeout))
+
+
+def parse_reply(stdout: str, returncode: int) -> str:
+    try:
+        reply = json.loads(stdout.strip().splitlines()[-1])
+    except (ValueError, IndexError) as exc:
+        raise AgentError("The connection to Dex failed.") from exc
+    if not isinstance(reply, dict):
+        raise AgentError("Dex sent something I couldn't read.")
+    if returncode or "error" in reply:
+        raise AgentError(str(reply.get("error", "Dex could not answer.")))
+    text = reply.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise AgentError("Dex sent an empty answer.")
+    return text.strip()
+
+
+class HermesAgent:
+    """`ssh <alias> docker exec -i <container> python -` with the REMOTE script on stdin.
+
+    `command` can be overridden (tests point it at a local stand-in; nothing touches Hermes).
+    Cancelling the awaiting task kills the SSH process, so a cancelled question leaves nothing
+    running locally.
+    """
+
+    def __init__(
+        self,
+        ssh_alias: str = "hermes",
+        container: str = "hermes-agent",
+        timeout: float = 120.0,
+        command: list[str] | None = None,
+    ) -> None:
+        self.timeout = timeout
+        self.command = command or [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            ssh_alias,
+            f"docker exec -i {container} /opt/hermes/.venv/bin/python -",
+        ]
+
+    async def reply(self, messages: list[Message]) -> str:
+        script = build_remote_script(messages, http_timeout=max(5.0, self.timeout - 10))
+        proc = await asyncio.create_subprocess_exec(
+            *self.command,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(script.encode()), timeout=self.timeout
+            )
+        except TimeoutError as exc:
+            raise AgentTimeout("Dex didn't answer within 120 seconds.") from exc
+        finally:
+            if proc.returncode is None:
+                with contextlib.suppress(ProcessLookupError):
+                    proc.kill()
+                await proc.wait()
+        if proc.returncode and stderr:
+            log.warning("hermes ssh exited %s: %s", proc.returncode, stderr.decode()[-300:])
+        return parse_reply(stdout.decode(errors="replace"), proc.returncode or 0)
