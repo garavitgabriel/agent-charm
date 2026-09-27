@@ -1,0 +1,82 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-09-27T23:28:20Z"
+ },
+ "title": "Dex Charm · Reading mode",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R1. Reading home"
+  },
+  "R2Lead.dc.html": {
+   "x": 448,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R2. Answer, lead"
+  },
+  "R3Detail.dc.html": {
+   "x": 896,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R3. Answer, detail scrolled"
+  },
+  "R4Quiet.dc.html": {
+   "x": 1344,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R4. Quiet (default)"
+  },
+  "R4Speak.dc.html": {
+   "x": 1792,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R4. Voice on"
+  },
+  "R5Small.dc.html": {
+   "x": 2240,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R5. Detail, smallest (18)"
+  },
+  "R5Large.dc.html": {
+   "x": 2688,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R5. Detail, largest (26)"
+  },
+  "R6Saved.dc.html": {
+   "x": 3136,
+   "y": 0,
+   "w": 368,
+   "h": 448,
+   "title": "R6. Saved"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "R2Lead.dc.html",
+  "R3Detail.dc.html",
+  "R4Quiet.dc.html",
+  "R4Speak.dc.html",
+  "R5Small.dc.html",
+  "R5Large.dc.html",
+  "R6Saved.dc.html"
+ ],
+ "notes": {},
+ "designSystems": []
+}

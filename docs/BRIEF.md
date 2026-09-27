@@ -2,8 +2,8 @@
 title: Dex Charm — product and design brief
 type: brief
 created: 2026-09-25
-updated: 2026-09-25
-status: pre-design (input to /design-sprint)
+updated: 2026-09-27
+status: designed (§ 11), in build
 vault_home: ~/notes-vault/agents/active/hermes/charm/README.md
 ---
 
@@ -61,19 +61,25 @@ Margin reading-companion prototype.
 - **Cost of failure:** a wrong tap spending money is the worst case. Money actions need a deliberate
   2-second hold on a preview.
 
-## 4. The character — Dex (LOCKED)
+## 4. The character — Dex (LOCKED: smooth illustrated, 2026-09-25)
 
-Reference: [`design/character/dex-reference.png`](design/character/dex-reference.png).
+> **Superseded by the design sprint.** Pixel art is **retired**. The owner picked the smooth illustrated
+> Dex on 2026-09-25 ("definitely smooth, it looks and feels more premium"). The canonical character is
+> the code in [`design/character/smooth/`](design/character/smooth/) (`dex.py` parts, `sheet.py`
+> poses), with the reference sheet [`design/character/dex-smooth-sheet.png`](design/character/dex-smooth-sheet.png).
+> The original pixel reference, [`design/character/dex-reference.png`](design/character/dex-reference.png),
+> now defines **identity only** (hair, beard, teal jacket, bag, badge, mug, phone, ringed-planet
+> logo). The final pose list, placement and the character-swap contract are in **§ 11 Design**. The
+> pixel-era tasks below are kept for history.
 
-Pixel-art Dex: messy dark-brown hair, short beard, teal jacket over a white shirt, black trousers,
+Identity: messy dark-brown hair, short beard, teal jacket over a white shirt, black trousers,
 white-and-grey sneakers, a brown messenger bag, a lanyard badge, a coffee mug and a phone showing a
 green-checked task list. Both the mug and the badge carry a small **ringed-planet** logo.
 
-**The character is locked. Directions vary the world around him, not him.** Design tasks for Dex:
+**The character is locked. Directions vary the world around him, not him.** Original design tasks
+(historical; see § 11 for what shipped):
 
-1. **Redraw him on a strict pixel grid.** The reference is an AI-generated image and isn't grid-perfect.
-   Propose a sprite size (for example 48×64 or 56×72 logical pixels, shown at 3–4× scale) and a
-   limited palette (about 12–16 colors).
+1. ~~**Redraw him on a strict pixel grid.**~~ Retired. He is smooth illustrated, flat tonal steps.
 2. **A pose set.** Each pose has 2–6 animation frames:
 
 | State | Pose idea | Meaning |
@@ -99,8 +105,9 @@ green-checked task list. Both the mug and the badge carry a small **ringed-plane
 | Code review | Laptop or magnifying glass | GitHub (future) |
 | The cat | A cat on his shoulder | Ojo de Gato cat camera |
 
-4. **Two sizes.** Full body for Home, and a **mini head-and-shoulders** that sits in a corner while a
-   card is open (like the iPhone's Dynamic Island: Dex never disappears).
+4. ~~**Two sizes.**~~ **Superseded: one size, one anchor.** Dex is full body at one scale in one
+   anchor zone on every screen, and content sits above him (§ 11). All the critics failed the corner
+   mini-head as "sticker Dex".
 
 ## 5. Surfaces to design (named)
 
@@ -176,8 +183,11 @@ original firmware is already backed up (Margin repo, `.local/backups/`).
 
 ## 10. Decided / not decided
 
+**Decided (2026-09-27, design sprint):**
+- Smooth illustrated Dex (pixel retired). No clock. Warm-gold accent `#F2C14E`. BCKO base + MZCL Listening. See § 11.
+
 **Decided (2026-09-25):**
-- The character is **Dex with a body**, using the owner's pixel-art reference.
+- The character is **Dex with a body**, using the owner's pixel-art reference (style superseded 2026-09-25 → smooth).
 - The charm is the platform. Margin (reading) becomes one mode of it.
 - Design comes first, via `/design-sprint`. The design comes back here and the build runs from this
   repo.
@@ -190,6 +200,137 @@ original firmware is already backed up (Margin repo, `.local/backups/`).
   (fast realtime model plus a handoff to Dex).
 - Where the server runs outside the house: probably next to Hermes on the VPS, with the charm on the
   phone's hotspot.
+
+## 11. Design (final, from /design-sprint 2026-09-25 → 27)
+
+**Builders: read this section first.** Exact values live in
+[`design/final/tokens.md`](design/final/tokens.md) and [`design/final/motion.md`](design/final/motion.md).
+The reference screens are [`design/final/*.png`](design/final/) at 368×448, and their generating source
+is [`design/final/src/`](design/final/src/). **Implement from the final render, not from a critic report
+or a chat screenshot.** Evidence and history: [`design/bones.md`](design/bones.md),
+`design/critic-r*.md`, and the vault sprint log `agents/active/hermes/charm/assets/design/sprint-log.md`.
+
+### 11.1 Direction
+
+**Dex is the interface, not a mascot beside it.** The base is the clean, premium-wearable direction
+(render `1-BCKO`), with the Listening screen and the character/content separator from `24-MZCL`. The
+screen is true black. Content sits in one zone at the top, Dex lives full-body in one anchor zone
+below it, and a thin rule separates the two. On every screen where you *act*, Dex physically does
+the thing: he holds up the "Yes" sign, holds out the takeout bag (**the bag is the hold-to-pay
+control**), catches your voice in his cupped hand, and hands the order over when it's done. The
+premium feel comes from restraint (one accent, three type sizes, no boxes) and from a character who
+is alive, not from decoration. **There is no clock anywhere.**
+
+### 11.2 Tokens (summary; `tokens.md` is the source of truth)
+
+| Token | Value |
+|---|---|
+| Background | `#000000` on every screen |
+| Primary text `FG` | `#F2EFE9` |
+| Secondary text `FG2` | `#D6D3CC` (never below `#BDBDBD`) |
+| **Accent** (one accent, one meaning: "you can act on this") | **Warm gold `#F2C14E`**, side plane `#D19F2B`, highlight `#F9DC94`. Night accent `ACC_N` `#5E4A1C` (dimmed gold; reserved, since Night has no action today). |
+| Text on accent `ON_ACC` | `#0B0A12` |
+| Separator `LINE` | `#3B3A40`, 3 px, (24,206)→(344,206) |
+| Type | **Instrument Sans** 400/500/600, fixed sizes **18 / 24 / 32 / 40 px**, at most 3 per screen. 40 is the money total only. Actions are 24/600. |
+| Spacing | 4 / 8 / 16 / 24 / 32; outer gutter 24 |
+| Touch targets | ≥ 56 px; pills 56 px tall, radius 28, no outline |
+| Content zone | (24, 24, 320, 166); nothing below y=190 |
+| Anchor zone | (0, 209, 368, 239): Dex, his props, the action rail (left of Dex), the voice stream |
+| Dex placement | hip anchor **(236, 379)**, scale **0.62**, full body, **identical on every screen** |
+
+Accent candidates tested: purple `#B3A6FF`, gold, mint `#9FE3C4`
+(`design/final/accent-compare.png`). **Gold picked by the owner, 2026-09-27.**
+
+### 11.3 Surfaces (reference PNG → pose)
+
+| # | Surface | Reference | Dex pose | Element budget |
+|---|---|---|---|---|
+| 1 | Home / Idle | `01-home.png` | idle hero, mug, steam | Dex + one status line ("Nothing needs you") |
+| 2 | Listening | `02-listening.png` | lean-in, cupped hand | "I'm listening." + voice stream + separator-as-fuse (30 s) |
+| 3 | Working | `03-working.png` | head down over phone | one-line what ("Asking Coach Beard…") + Cancel |
+| 4 | Answer | `04-answer.png` | talking, palm toward answer | ≤ 60 words; footer "Full version in Telegram" |
+| 5 | Decision | `05-decision.png` | holds up the "Yes" sign (the default) | question + "Default: …" + Yes / No / Later |
+| 6 | Money preview | `06-money-preview.png` | bag at chest | merchant (18), **total (40) + COP (32)**, items · ETA · place (18), "Hold Dex to order" (32/600, gold) |
+| 7 | Money mid-hold | `07-money-mid-hold.png` | on toes, bag overhead (1.72×), filling gold | "Ordering…" (32) |
+| 8 | Done | `08-done.png` | hands the full bag over, nod | "Ordered." + arrival. Shown only after the backend confirms. |
+| 9 | Live tracker | `09-live-tracker.png` | arms folded, leans back, looks to the door, toe-tap | current stop 32 px, others 18 px |
+| 10 | Pocket edition | `10-pocket-edition.png` | holds the paper open | masthead line + Read |
+| 11 | Job done | `11-job-done.png` | shows phone | result + Send to Claude Code / Later |
+| 12 | Night | `12-night.png` | asleep on stool (`PAL_NIGHT`) | no text; dim tokens only |
+| 13 | Offline | `13-offline.png` | frowns at no-signal phone | "No connection" + Try again |
+| 14 | Needs more | `14-needs-more.png` | shrug, palms up | question + two choice pills |
+
+Reading-mode surfaces (reading home, lead + scrollable detail, Saved, speak/quiet, text size) are
+**being rendered now** and will be appended here as § 11.8. Until then, build them as placeholders
+using these tokens.
+
+### 11.4 Motion (summary; `motion.md` is the source of truth)
+
+25 fps (40 ms ticks). All character motion is sprite-frame swaps plus integer px offsets of the whole
+sprite. Dex never scales or leaves the anchor. Idle breathing runs on a 4.0 s cycle (6.0 s at night),
+with random blinks every 3–6 s. The voice stream travels edge-to-hand in 900 ms and spawns from mic
+amplitude. The **hold fills the bag linearly over 2000 ms in 20 steps**; an early release drains it in
+300 ms with no message. Content enters in 180 ms (40 ms stagger) and exits in 120 ms, so a state
+change is about 400 ms total.
+
+### 11.5 Copy rules
+
+- The spoken reply is **≤ 2 sentences**; cards are **≤ 60 words**. Anything longer goes to Telegram or
+  a notes app and is never read aloud.
+- Headline-first and short ("Light day.", "Nothing needs you"). State the default and the deadline
+  on decisions ("Default: yes, Sunday.").
+- **Dex never promises to nudge, remind or ping.** He waits to be looked at.
+- Don't write copy that explains the UI ("2 seconds, not a tap"). The design shows it.
+- Never fake a state: no listening pose unless the mic is on, and no Done before the backend
+  confirms. Stale data says so.
+- Voice (critics picked it independently as the thing to keep): "Nothing needs you" is the house tone.
+
+### 11.6 Pre-merge checklist (the bones + kill list, verbatim from `design/bones.md`)
+
+Every UI PR must pass all of these on the simulator:
+- [ ] No clock, time display or hero numerals. Times inside content are fine.
+- [ ] Dex is full body, at the one anchor, at the one scale, on this screen. He is never cropped, cornered or hidden.
+- [ ] This screen's Dex pose is unique (no reused gesture).
+- [ ] At most 3 type sizes on the screen, from 18/24/32/40 only; secondary text ≥ `#BDBDBD`.
+- [ ] One dominant element readable in 2 s (blurred-thumbnail test).
+- [ ] The accent is used only for "you can act on this". No second accent, green check, teal or blue UI.
+- [ ] No boxes, outlined cards or 1px borders. Type sits on true black.
+- [ ] No blur, soft shadow, gradient or glass. Flat fills, strokes and sprites only.
+- [ ] Night-safe: no large bright areas.
+- [ ] Money: total is the largest text, the confirm is Dex's 2 s hold (never a tap), and mid-hold is visibly different from preview.
+- [ ] On Listening, Decision, Money and Done, Dex is part of the interaction.
+- Kill list: chat bubbles · tracked micro-caps eyebrow labels · badges, red dots, streaks · symmetric
+  Siri waveform bars · Apple-Watch/Apple-Pay hold ring · equal-weight ✓/✗/⏰ icon row · renderer brand
+  palettes (Claude orange-on-cream) · pixel-art UI or fonts · decoration pagers · hairline serifs ·
+  sparkle "AI" icons · grey cards on AMOLED.
+
+### 11.7 Sprites, and the character-swap contract
+
+**Sprite format:**
+- **Opaque RGB565, pre-composited on `#000`, with no alpha.** Every screen is true black behind Dex,
+  so he must never be drawn over anything else.
+- Accent overlays that touch him (the bag fill, the voice stream) are drawn by LVGL on top, never
+  baked into the sprite.
+- Cell **192×192** (it covers the bag-overhead lift).
+- About **46 frames** for the base pose set plus reading.
+- About 3.4 MB raw; compress with RLE or LZ4, which should give roughly 1–1.5 MB. Night frames bake
+  `PAL_NIGHT`.
+- Export the frames from `design/final/src/` (the poses are code), not by hand.
+
+**Character-swap contract (added at the owner's request).** A future character can replace Dex without
+a UI redesign if it meets all of these:
+1. **The same pose list** as § 11.3, plus the idle, listening, speaking and hold frame sets in `motion.md`.
+2. **The same style rules:** flat tonal steps (2–3 per material), one outline weight, no gradients,
+   and a night palette variant.
+3. **The same footprint:** it fits the 192×192 cell with its hip at the anchor (236,379), about
+   211 px tall, and never enters the content zone above y=214.
+4. **Hands, or an equivalent that can present things.** It must *hold* the Yes sign, the bag (the
+   hold control) and the paper. A handless character forces a redesign of Decision, Money and Done.
+5. **Its colours don't collide with the accent.** Gold was chosen partly because it contrasts with
+   Dex's teal jacket.
+
+Cost of a swap: one pose-sheet render and a new sprite export. Tokens, layouts and motion are
+unchanged.
 
 ## Sources
 
