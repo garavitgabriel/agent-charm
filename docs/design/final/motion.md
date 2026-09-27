@@ -31,7 +31,7 @@ Night: the breathing cycle stretches to **6.0 s** (2400 / 600 / 2400 / 600). The
 - Capsules taper by position: full width near the edge, down to 4 px at the hand.
 - After silence longer than **1.2 s**, the stream drains (no new capsules) and Dex's head eases back 1 frame.
 - Dex while voice is present: head bob, 2 frames, 300 ms each.
-- 30 s allowance: the separator's accent segment grows left → right from 0 to 320 px over 30 s. Redraw every 250 ms (≈ 2.7 px per step). There are no numerals. When it reaches 344, the recording ends as if the button were released.
+- 25 s allowance (firmware/UI listen limit; was 30 s in the render): the separator's accent segment grows left → right from 0 to 320 px over 25 s. Redraw every 250 ms (≈ 3.2 px per step). There are no numerals. When it reaches 344, the recording ends as if the button were released.
 - Enter: the stream's first capsule leaves the edge 120 ms after the button goes down. Exit (release): remaining capsules finish their transit (≤ 900 ms). The fuse fades out over 200 ms. Cross to Working.
 
 ## Money: the 2-second hold
