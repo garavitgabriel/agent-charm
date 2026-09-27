@@ -12,3 +12,4 @@ __pycache__/
 .mypy_cache/
 *.wav
 !**/fixtures/**/*.wav
+notes/.venv/

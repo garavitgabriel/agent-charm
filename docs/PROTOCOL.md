@@ -127,6 +127,62 @@ These are additive; nothing breaks. The device and UI must treat them as the con
    The device must accept a card in any order relative to speech. The talk-flow diagram above shows
    the slow-path order.
 
+## Reading mode — 2026-09-27 (additive, still proto/0)
+
+Margin's reading companion is now a mode of the charm. Everything below is additive. A device that
+ignores it still works.
+
+**Entering and leaving.** The server decides the mode from the transcript. Rules come first (EN + ES);
+there's no model call for intent. Examples:
+- "I'm reading *Title* by *Author*, chapter 3" / "Estoy leyendo *Título*, capítulo 3" → reading mode
+  for that book.
+- "Stop reading" / "Deja de leer" → default mode.
+
+The device can also set the mode directly with `setting{name:"mode"}` (below). In reading mode the
+book comes from a per-book session that the server keeps across reconnects, so saying "chapter 4"
+later updates the chapter.
+
+**New and extended messages:**
+
+| direction | type | fields | meaning |
+|---|---|---|---|
+| server → device | `mode` | `value`, **`book?`** `{title, author?, chapter?}` | `book` is present in reading mode |
+| device → server | `setting` | `name: "speech" \| "mode"`, `value` (`"on"\|"off"`, or `"reading"\|"default"`) | A user toggle |
+| server → device | `setting` | `name`, `value` | Confirms the effective value. The device shows state only from this echo |
+
+**Speech.** Reading mode defaults to `speech:"off"` (quiet, text only). While speech is off the
+server sends **no** `speech_start`/`speech_end` for answers. `state` still goes `working → idle`.
+Speech defaults to `"on"` outside reading mode.
+
+**Reading answers** are `card{kind:"answer"}` with:
+- `body`: a short lead, at most 60 words. It's the only part ever spoken.
+- `detail`: optional, long and scrollable, at most 1600 characters. Never spoken.
+- `data.book`: `{title, author?, chapter?}`.
+
+The reading persona follows Margin's rules:
+- no spoilers past the stated chapter;
+- never invent quotes or page numbers;
+- ask for the passage when needed;
+- separate the author's claim, interpretation and outside background.
+
+Example: `contract/examples/reading/answer-reading.json`.
+
+**Save this thought.** "Save this: …" / "Guarda esto: …" (reading mode or not) saves the **verbatim**
+words after the trigger, with the book/chapter when in reading mode. The flow:
+
+```
+server: state{working, label:"Saving"} → (note store confirms) → card{kind:"notice", data:{saved:true, book?}}
+        → state{done} → state{idle}
+```
+
+- The saved notice shows the verbatim thought (see `contract/examples/reading/notice-saved.json`).
+- **✓ / `state{done}` happens only after the store confirms persistence.**
+- On failure: `error{code:"save_failed"}` plus a notice with `data.saved:false` saying it was NOT
+  saved. There's no silent queue in v0.
+- A save never goes to Dex as a question. Dex doesn't answer it.
+
+New error code: `save_failed`, meaning the note store didn't confirm the save.
+
 ## Versioning
 
 This is v0. The protocol version travels in `hello.fw` and `welcome.server` (e.g. `"charm-server/0.1 proto/0"`).

@@ -3,129 +3,320 @@
   "$id": "https://github.com/garavitgabriel/dex-charm/contract/card.schema.json",
   "title": "Dex Charm card (proto v0)",
   "type": "object",
-  "required": ["id", "kind", "title", "source", "created_at"],
+  "required": [
+    "id",
+    "kind",
+    "title",
+    "source",
+    "created_at"
+  ],
   "additionalProperties": false,
   "properties": {
-    "id": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "kind": { "enum": ["answer", "decision", "money", "tracker", "edition", "job", "notice"] },
-    "title": { "type": "string", "minLength": 1, "maxLength": 60 },
-    "body": { "type": "string", "maxLength": 420, "description": "At most ~60 words. Plain text, no markdown." },
-    "source": { "type": "string", "maxLength": 24, "description": "Who produced it: dex, coach, delivery, edition, github, other, system" },
-    "created_at": { "type": "string", "format": "date-time" },
-    "fresh_until": { "type": "string", "format": "date-time", "description": "After this, the device labels the card stale" },
-    "stale": { "type": "boolean", "description": "Set by the producer when the underlying feed missed its deadline" },
-    "footer": { "type": "string", "maxLength": 80 },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "kind": {
+      "enum": [
+        "answer",
+        "decision",
+        "money",
+        "tracker",
+        "edition",
+        "job",
+        "notice"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "body": {
+      "type": "string",
+      "maxLength": 420,
+      "description": "At most ~60 words. Plain text, no markdown."
+    },
+    "detail": {
+      "type": "string",
+      "maxLength": 1600,
+      "description": "Optional long, scrollable text shown under the body (~250 words). Never spoken. Used by reading answers."
+    },
+    "source": {
+      "type": "string",
+      "maxLength": 24,
+      "description": "Who produced it: dex, coach, delivery, edition, github, other, system"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fresh_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "After this, the device labels the card stale"
+    },
+    "stale": {
+      "type": "boolean",
+      "description": "Set by the producer when the underlying feed missed its deadline"
+    },
+    "footer": {
+      "type": "string",
+      "maxLength": 80
+    },
     "actions": {
       "type": "array",
       "maxItems": 3,
       "items": {
         "type": "object",
-        "required": ["id", "label"],
+        "required": [
+          "id",
+          "label"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "maxLength": 24 },
-          "label": { "type": "string", "maxLength": 18 },
-          "style": { "enum": ["primary", "secondary", "danger"] },
-          "hold_ms": { "type": "integer", "minimum": 0, "maximum": 5000 }
+          "id": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 18
+          },
+          "style": {
+            "enum": [
+              "primary",
+              "secondary",
+              "danger"
+            ]
+          },
+          "hold_ms": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5000
+          }
         }
       }
     },
-    "data": { "type": "object", "description": "Kind-specific payload; see the kind rules below" }
+    "data": {
+      "type": "object",
+      "description": "Kind-specific payload; see the kind rules below"
+    }
   },
   "allOf": [
     {
-      "if": { "properties": { "kind": { "const": "decision" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "decision"
+          }
+        }
+      },
       "then": {
-        "required": ["data", "actions"],
+        "required": [
+          "data",
+          "actions"
+        ],
         "properties": {
           "data": {
             "type": "object",
-            "required": ["default", "deadline"],
+            "required": [
+              "default",
+              "deadline"
+            ],
             "properties": {
-              "default": { "type": "string", "maxLength": 40 },
-              "deadline": { "type": "string", "maxLength": 40 }
+              "default": {
+                "type": "string",
+                "maxLength": 40
+              },
+              "deadline": {
+                "type": "string",
+                "maxLength": 40
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "money" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "money"
+          }
+        }
+      },
       "then": {
-        "required": ["data", "actions"],
+        "required": [
+          "data",
+          "actions"
+        ],
         "properties": {
           "data": {
             "type": "object",
-            "required": ["store", "items", "total", "currency"],
+            "required": [
+              "store",
+              "items",
+              "total",
+              "currency"
+            ],
             "properties": {
-              "store": { "type": "string", "maxLength": 40 },
+              "store": {
+                "type": "string",
+                "maxLength": 40
+              },
               "items": {
                 "type": "array",
                 "maxItems": 8,
                 "items": {
                   "type": "object",
-                  "required": ["name", "qty"],
+                  "required": [
+                    "name",
+                    "qty"
+                  ],
                   "properties": {
-                    "name": { "type": "string", "maxLength": 40 },
-                    "qty": { "type": "integer", "minimum": 1 },
-                    "price": { "type": "number" }
+                    "name": {
+                      "type": "string",
+                      "maxLength": 40
+                    },
+                    "qty": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "price": {
+                      "type": "number"
+                    }
                   }
                 }
               },
-              "total": { "type": "number" },
-              "currency": { "type": "string", "maxLength": 3 },
-              "eta_min": { "type": "integer" },
-              "address_label": { "type": "string", "maxLength": 30 },
-              "fixture": { "type": "boolean", "description": "true = sample data; confirming must not order anything" }
+              "total": {
+                "type": "number"
+              },
+              "currency": {
+                "type": "string",
+                "maxLength": 3
+              },
+              "eta_min": {
+                "type": "integer"
+              },
+              "address_label": {
+                "type": "string",
+                "maxLength": 30
+              },
+              "fixture": {
+                "type": "boolean",
+                "description": "true = sample data; confirming must not order anything"
+              }
             }
           },
           "actions": {
             "contains": {
               "type": "object",
-              "required": ["hold_ms"],
-              "properties": { "hold_ms": { "type": "integer", "minimum": 2000 } }
+              "required": [
+                "hold_ms"
+              ],
+              "properties": {
+                "hold_ms": {
+                  "type": "integer",
+                  "minimum": 2000
+                }
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "tracker" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "tracker"
+          }
+        }
+      },
       "then": {
-        "required": ["data"],
+        "required": [
+          "data"
+        ],
         "properties": {
           "data": {
             "type": "object",
-            "required": ["steps", "current"],
+            "required": [
+              "steps",
+              "current"
+            ],
             "properties": {
-              "steps": { "type": "array", "minItems": 2, "maxItems": 6, "items": { "type": "string", "maxLength": 24 } },
-              "current": { "type": "integer", "minimum": 0 },
-              "eta_min": { "type": "integer" }
+              "steps": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 6,
+                "items": {
+                  "type": "string",
+                  "maxLength": 24
+                }
+              },
+              "current": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "eta_min": {
+                "type": "integer"
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "edition" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "edition"
+          }
+        }
+      },
       "then": {
-        "required": ["data"],
+        "required": [
+          "data"
+        ],
         "properties": {
           "data": {
             "type": "object",
-            "required": ["section"],
+            "required": [
+              "section"
+            ],
             "properties": {
-              "section": { "enum": ["masthead", "one_thing", "sports", "almanac", "waiting", "wire"] },
-              "edition_no": { "type": "integer" },
+              "section": {
+                "enum": [
+                  "masthead",
+                  "one_thing",
+                  "sports",
+                  "almanac",
+                  "waiting",
+                  "wire"
+                ]
+              },
+              "edition_no": {
+                "type": "integer"
+              },
               "rows": {
                 "type": "array",
                 "maxItems": 12,
                 "items": {
                   "type": "object",
-                  "required": ["text"],
+                  "required": [
+                    "text"
+                  ],
                   "properties": {
-                    "text": { "type": "string", "maxLength": 80 },
-                    "stamp": { "type": "string", "maxLength": 20 }
+                    "text": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "stamp": {
+                      "type": "string",
+                      "maxLength": 20
+                    }
                   }
                 }
               },
@@ -134,35 +325,122 @@
                 "maxItems": 4,
                 "items": {
                   "type": "object",
-                  "required": ["value", "label"],
+                  "required": [
+                    "value",
+                    "label"
+                  ],
                   "properties": {
-                    "value": { "type": "string", "maxLength": 10 },
-                    "label": { "type": "string", "maxLength": 14 }
+                    "value": {
+                      "type": "string",
+                      "maxLength": 10
+                    },
+                    "label": {
+                      "type": "string",
+                      "maxLength": 14
+                    }
                   }
                 }
               },
-              "moon": { "type": "string", "maxLength": 20 }
+              "moon": {
+                "type": "string",
+                "maxLength": 20
+              }
             }
           }
         }
       }
     },
     {
-      "if": { "properties": { "kind": { "const": "job" } } },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "job"
+          }
+        }
+      },
       "then": {
-        "required": ["data"],
+        "required": [
+          "data"
+        ],
         "properties": {
           "data": {
             "type": "object",
-            "required": ["status"],
+            "required": [
+              "status"
+            ],
             "properties": {
-              "status": { "enum": ["running", "done", "failed"] },
-              "progress": { "type": "number", "minimum": 0, "maximum": 1 },
-              "link": { "type": "string", "maxLength": 200 }
+              "status": {
+                "enum": [
+                  "running",
+                  "done",
+                  "failed"
+                ]
+              },
+              "progress": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "link": {
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "answer",
+              "notice"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "book": {
+                "$ref": "#/$defs/book"
+              },
+              "saved": {
+                "type": "boolean",
+                "description": "notice only: true = the note store confirmed persistence"
+              }
             }
           }
         }
       }
     }
-  ]
+  ],
+  "$defs": {
+    "book": {
+      "type": "object",
+      "required": [
+        "title"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "author": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "chapter": {
+          "type": "string",
+          "maxLength": 30
+        }
+      }
+    }
+  }
 }
