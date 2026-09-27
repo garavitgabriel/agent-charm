@@ -1,0 +1,1143 @@
+{
+ "version": 1,
+ "_generated": "cd tools && uv run charm-assets export-dex  (do not edit by hand)",
+ "_notes": [
+  "blink: half = the design's eyes='down' (heavy upper lid), closed = eyes='blink'",
+  "steam: the design's single steam shape swayed with mug(lean=...) for the 3-frame loop",
+  "idle sip: raise/lower is the hero and sip poses interpolated at 1/2",
+  "listening head bob: head_dy +4 on the second frame",
+  "working thumb-tap: right hand 3 units toward the phone on the second frame",
+  "speaking mouth: the design's mouth='open' alternating with mouth='o'",
+  "lift: 2 in-betweens interpolate offer_bag -> lift_bag at 1/3 and 2/3; bob = bag and hand 1 screen px down (up pokes the handles out of the cell)",
+  "done nod: head_dy 4, 7, 4, 0 (the reference frame is head_dy 7)",
+  "lookout toe-tap: right shoe rot -24 -> -10 with the ankle 3 units down",
+  "attention: no design pose of its own; it is the sheet's 'something for you', which the final design ships as job done (show_phone), so it plays show_phone's frames",
+  "reading outfit: the design source has none yet, so reading borrows the default frames"
+ ],
+ "sprites": {
+  "format": "rgb565",
+  "compression": "lz4",
+  "cell": [
+   192,
+   224
+  ],
+  "anchor": [
+   76,
+   161
+  ],
+  "screen_anchor": [
+   236,
+   379
+  ],
+  "mini_origin": [
+   38,
+   20
+  ],
+  "outfit_fallback": true,
+  "motion": {
+   "tick_ms": 40,
+   "breath": {
+    "day": [
+     1600,
+     200,
+     200,
+     1600,
+     200,
+     200
+    ],
+    "night": [
+     2400,
+     300,
+     300,
+     2400,
+     300,
+     300
+    ]
+   },
+   "blink": {
+    "half_ms": 60,
+    "closed_ms": 90,
+    "every_ms": [
+     3000,
+     6000
+    ],
+    "double_every": 5,
+    "double_gap_ms": 150
+   },
+   "sip_every_ms": [
+    20000,
+    40000
+   ]
+  },
+  "frames": {
+   "idle-s0": {
+    "file": "frames/idle-s0.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s0-half": {
+    "file": "frames/idle-s0-half.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s0-closed": {
+    "file": "frames/idle-s0-closed.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s1": {
+    "file": "frames/idle-s1.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s1-half": {
+    "file": "frames/idle-s1-half.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s1-closed": {
+    "file": "frames/idle-s1-closed.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s2": {
+    "file": "frames/idle-s2.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s2-half": {
+    "file": "frames/idle-s2-half.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-s2-closed": {
+    "file": "frames/idle-s2-closed.png",
+    "points": {
+     "hand": [
+      97,
+      89,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-sip-mid": {
+    "file": "frames/idle-sip-mid.png",
+    "points": {
+     "hand": [
+      94,
+      86,
+      17,
+      18
+     ]
+    }
+   },
+   "idle-sip": {
+    "file": "frames/idle-sip.png",
+    "points": {
+     "hand": [
+      91,
+      83,
+      17,
+      18
+     ]
+    }
+   },
+   "listening-0": {
+    "file": "frames/listening-0.png",
+    "points": {
+     "hand": [
+      123,
+      80,
+      20,
+      19
+     ]
+    }
+   },
+   "listening-0-half": {
+    "file": "frames/listening-0-half.png",
+    "points": {
+     "hand": [
+      123,
+      80,
+      20,
+      19
+     ]
+    }
+   },
+   "listening-0-closed": {
+    "file": "frames/listening-0-closed.png",
+    "points": {
+     "hand": [
+      123,
+      80,
+      20,
+      19
+     ]
+    }
+   },
+   "listening-1": {
+    "file": "frames/listening-1.png",
+    "points": {
+     "hand": [
+      123,
+      80,
+      20,
+      19
+     ]
+    }
+   },
+   "listening-1-half": {
+    "file": "frames/listening-1-half.png",
+    "points": {
+     "hand": [
+      123,
+      80,
+      20,
+      19
+     ]
+    }
+   },
+   "listening-1-closed": {
+    "file": "frames/listening-1-closed.png",
+    "points": {
+     "hand": [
+      123,
+      80,
+      20,
+      19
+     ]
+    }
+   },
+   "working-0": {
+    "file": "frames/working-0.png",
+    "points": {
+     "hand": [
+      77,
+      138,
+      17,
+      17
+     ]
+    }
+   },
+   "working-1": {
+    "file": "frames/working-1.png",
+    "points": {
+     "hand": [
+      77,
+      136,
+      17,
+      17
+     ]
+    }
+   },
+   "speaking-0": {
+    "file": "frames/speaking-0.png",
+    "points": {
+     "hand": [
+      118,
+      64,
+      21,
+      20
+     ]
+    }
+   },
+   "speaking-0-half": {
+    "file": "frames/speaking-0-half.png",
+    "points": {
+     "hand": [
+      118,
+      64,
+      21,
+      20
+     ]
+    }
+   },
+   "speaking-0-closed": {
+    "file": "frames/speaking-0-closed.png",
+    "points": {
+     "hand": [
+      118,
+      64,
+      21,
+      20
+     ]
+    }
+   },
+   "speaking-1": {
+    "file": "frames/speaking-1.png",
+    "points": {
+     "hand": [
+      118,
+      64,
+      21,
+      20
+     ]
+    }
+   },
+   "speaking-1-half": {
+    "file": "frames/speaking-1-half.png",
+    "points": {
+     "hand": [
+      118,
+      64,
+      21,
+      20
+     ]
+    }
+   },
+   "speaking-1-closed": {
+    "file": "frames/speaking-1-closed.png",
+    "points": {
+     "hand": [
+      118,
+      64,
+      21,
+      20
+     ]
+    }
+   },
+   "ask_yes": {
+    "file": "frames/ask_yes.png",
+    "points": {
+     "hand": [
+      120,
+      76,
+      18,
+      18
+     ]
+    }
+   },
+   "ask_yes-half": {
+    "file": "frames/ask_yes-half.png",
+    "points": {
+     "hand": [
+      120,
+      76,
+      18,
+      18
+     ]
+    }
+   },
+   "ask_yes-closed": {
+    "file": "frames/ask_yes-closed.png",
+    "points": {
+     "hand": [
+      120,
+      76,
+      18,
+      18
+     ]
+    }
+   },
+   "offer_bag": {
+    "file": "frames/offer_bag.png",
+    "points": {
+     "hand": [
+      94,
+      128,
+      18,
+      17
+     ],
+     "bag": [
+      45,
+      115,
+      62,
+      71
+     ]
+    }
+   },
+   "offer_bag-half": {
+    "file": "frames/offer_bag-half.png",
+    "points": {
+     "hand": [
+      94,
+      128,
+      18,
+      17
+     ],
+     "bag": [
+      45,
+      115,
+      62,
+      71
+     ]
+    }
+   },
+   "offer_bag-closed": {
+    "file": "frames/offer_bag-closed.png",
+    "points": {
+     "hand": [
+      94,
+      128,
+      18,
+      17
+     ],
+     "bag": [
+      45,
+      115,
+      62,
+      71
+     ]
+    }
+   },
+   "lift_bag-in1": {
+    "file": "frames/lift_bag-in1.png",
+    "points": {
+     "hand": [
+      106,
+      105,
+      18,
+      18
+     ],
+     "bag": [
+      65,
+      78,
+      68,
+      76
+     ]
+    }
+   },
+   "lift_bag-in2": {
+    "file": "frames/lift_bag-in2.png",
+    "points": {
+     "hand": [
+      120,
+      84,
+      18,
+      18
+     ],
+     "bag": [
+      87,
+      42,
+      74,
+      81
+     ]
+    }
+   },
+   "lift_bag-0": {
+    "file": "frames/lift_bag-0.png",
+    "points": {
+     "hand": [
+      136,
+      64,
+      19,
+      19
+     ],
+     "bag": [
+      113,
+      9,
+      78,
+      84
+     ]
+    }
+   },
+   "lift_bag-1": {
+    "file": "frames/lift_bag-1.png",
+    "points": {
+     "hand": [
+      136,
+      65,
+      19,
+      19
+     ],
+     "bag": [
+      113,
+      10,
+      78,
+      84
+     ]
+    }
+   },
+   "done-0": {
+    "file": "frames/done-0.png",
+    "points": {
+     "hand": [
+      146,
+      123,
+      19,
+      18
+     ],
+     "bag": [
+      127,
+      135,
+      52,
+      58
+     ]
+    }
+   },
+   "done-1": {
+    "file": "frames/done-1.png",
+    "points": {
+     "hand": [
+      146,
+      123,
+      19,
+      18
+     ],
+     "bag": [
+      127,
+      135,
+      52,
+      58
+     ]
+    }
+   },
+   "done-2": {
+    "file": "frames/done-2.png",
+    "points": {
+     "hand": [
+      146,
+      123,
+      19,
+      18
+     ],
+     "bag": [
+      127,
+      135,
+      52,
+      58
+     ]
+    }
+   },
+   "done-3": {
+    "file": "frames/done-3.png",
+    "points": {
+     "hand": [
+      146,
+      123,
+      19,
+      18
+     ],
+     "bag": [
+      127,
+      135,
+      52,
+      58
+     ]
+    }
+   },
+   "lookout-0": {
+    "file": "frames/lookout-0.png",
+    "points": {
+     "hand": [
+      48,
+      127,
+      19,
+      18
+     ]
+    }
+   },
+   "lookout-0-half": {
+    "file": "frames/lookout-0-half.png",
+    "points": {
+     "hand": [
+      48,
+      127,
+      19,
+      18
+     ]
+    }
+   },
+   "lookout-0-closed": {
+    "file": "frames/lookout-0-closed.png",
+    "points": {
+     "hand": [
+      48,
+      127,
+      19,
+      18
+     ]
+    }
+   },
+   "lookout-1": {
+    "file": "frames/lookout-1.png",
+    "points": {
+     "hand": [
+      48,
+      127,
+      19,
+      18
+     ]
+    }
+   },
+   "lookout-1-half": {
+    "file": "frames/lookout-1-half.png",
+    "points": {
+     "hand": [
+      48,
+      127,
+      19,
+      18
+     ]
+    }
+   },
+   "lookout-1-closed": {
+    "file": "frames/lookout-1-closed.png",
+    "points": {
+     "hand": [
+      48,
+      127,
+      19,
+      18
+     ]
+    }
+   },
+   "paper": {
+    "file": "frames/paper.png",
+    "points": {
+     "hand": [
+      102,
+      122,
+      17,
+      17
+     ]
+    }
+   },
+   "paper-half": {
+    "file": "frames/paper-half.png",
+    "points": {
+     "hand": [
+      102,
+      122,
+      17,
+      17
+     ]
+    }
+   },
+   "paper-closed": {
+    "file": "frames/paper-closed.png",
+    "points": {
+     "hand": [
+      102,
+      122,
+      17,
+      17
+     ]
+    }
+   },
+   "show_phone": {
+    "file": "frames/show_phone.png",
+    "points": {
+     "hand": [
+      95,
+      121,
+      17,
+      17
+     ]
+    }
+   },
+   "show_phone-half": {
+    "file": "frames/show_phone-half.png",
+    "points": {
+     "hand": [
+      95,
+      121,
+      17,
+      17
+     ]
+    }
+   },
+   "show_phone-closed": {
+    "file": "frames/show_phone-closed.png",
+    "points": {
+     "hand": [
+      95,
+      121,
+      17,
+      17
+     ]
+    }
+   },
+   "asleep-s0": {
+    "file": "frames/asleep-s0.png",
+    "points": {
+     "hand": [
+      90,
+      151,
+      17,
+      17
+     ]
+    }
+   },
+   "asleep-s1": {
+    "file": "frames/asleep-s1.png",
+    "points": {
+     "hand": [
+      90,
+      151,
+      17,
+      17
+     ]
+    }
+   },
+   "asleep-s2": {
+    "file": "frames/asleep-s2.png",
+    "points": {
+     "hand": [
+      90,
+      151,
+      17,
+      17
+     ]
+    }
+   },
+   "offline": {
+    "file": "frames/offline.png",
+    "points": {
+     "hand": [
+      99,
+      153,
+      17,
+      17
+     ]
+    }
+   },
+   "offline-half": {
+    "file": "frames/offline-half.png",
+    "points": {
+     "hand": [
+      99,
+      153,
+      17,
+      17
+     ]
+    }
+   },
+   "offline-closed": {
+    "file": "frames/offline-closed.png",
+    "points": {
+     "hand": [
+      99,
+      153,
+      17,
+      17
+     ]
+    }
+   },
+   "error": {
+    "file": "frames/error.png",
+    "points": {
+     "hand": [
+      118,
+      102,
+      17,
+      17
+     ]
+    }
+   },
+   "error-half": {
+    "file": "frames/error-half.png",
+    "points": {
+     "hand": [
+      118,
+      102,
+      17,
+      17
+     ]
+    }
+   },
+   "error-closed": {
+    "file": "frames/error-closed.png",
+    "points": {
+     "hand": [
+      118,
+      102,
+      17,
+      17
+     ]
+    }
+   }
+  },
+  "animations": [
+   {
+    "pose": "idle",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "idle-s0",
+      "ms": 250
+     },
+     {
+      "frame": "idle-s1",
+      "ms": 250
+     },
+     {
+      "frame": "idle-s2",
+      "ms": 250
+     }
+    ],
+    "blink": [
+     [
+      "idle-s0-half",
+      "idle-s0-closed"
+     ],
+     [
+      "idle-s1-half",
+      "idle-s1-closed"
+     ],
+     [
+      "idle-s2-half",
+      "idle-s2-closed"
+     ]
+    ],
+    "sip": [
+     {
+      "frame": "idle-sip-mid",
+      "ms": 400
+     },
+     {
+      "frame": "idle-sip",
+      "ms": 1200
+     },
+     {
+      "frame": "idle-sip-mid",
+      "ms": 400
+     }
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "listening",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "listening-0",
+      "ms": 300
+     },
+     {
+      "frame": "listening-1",
+      "ms": 300
+     }
+    ],
+    "blink": [
+     [
+      "listening-0-half",
+      "listening-0-closed"
+     ],
+     [
+      "listening-1-half",
+      "listening-1-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "working",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "working-0",
+      "ms": 300
+     },
+     {
+      "frame": "working-1",
+      "ms": 300
+     }
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "speaking",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "speaking-0",
+      "ms": 200
+     },
+     {
+      "frame": "speaking-1",
+      "ms": 200
+     }
+    ],
+    "blink": [
+     [
+      "speaking-0-half",
+      "speaking-0-closed"
+     ],
+     [
+      "speaking-1-half",
+      "speaking-1-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "ask_yes",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "ask_yes",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "ask_yes-half",
+      "ask_yes-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "offer_bag",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "offer_bag",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "offer_bag-half",
+      "offer_bag-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "lift_bag",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "lift_bag-in1",
+      "ms": 100
+     },
+     {
+      "frame": "lift_bag-in2",
+      "ms": 100
+     },
+     {
+      "frame": "lift_bag-0",
+      "ms": 200
+     },
+     {
+      "frame": "lift_bag-1",
+      "ms": 200
+     },
+     {
+      "frame": "lift_bag-0",
+      "ms": 200
+     }
+    ],
+    "loop_from": 3,
+    "exit": {
+     "to": "offer_bag",
+     "frames": [
+      {
+       "frame": "lift_bag-in2",
+       "ms": 100
+      },
+      {
+       "frame": "lift_bag-in1",
+       "ms": 100
+      }
+     ]
+    },
+    "breath": "none"
+   },
+   {
+    "pose": "done",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "done-0",
+      "ms": 120
+     },
+     {
+      "frame": "done-1",
+      "ms": 120
+     },
+     {
+      "frame": "done-2",
+      "ms": 120
+     },
+     {
+      "frame": "done-3",
+      "ms": 120
+     }
+    ],
+    "loop_from": 3,
+    "breath": "day"
+   },
+   {
+    "pose": "lookout",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "lookout-0",
+      "ms": 300
+     },
+     {
+      "frame": "lookout-1",
+      "ms": 300
+     }
+    ],
+    "blink": [
+     [
+      "lookout-0-half",
+      "lookout-0-closed"
+     ],
+     [
+      "lookout-1-half",
+      "lookout-1-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "paper",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "paper",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "paper-half",
+      "paper-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "show_phone",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "show_phone",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "show_phone-half",
+      "show_phone-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "attention",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "show_phone",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "show_phone-half",
+      "show_phone-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "asleep",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "asleep-s0",
+      "ms": 400
+     },
+     {
+      "frame": "asleep-s1",
+      "ms": 400
+     },
+     {
+      "frame": "asleep-s2",
+      "ms": 400
+     }
+    ],
+    "breath": "night"
+   },
+   {
+    "pose": "offline",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "offline",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "offline-half",
+      "offline-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "error",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "error",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "error-half",
+      "error-closed"
+     ]
+    ],
+    "breath": "day"
+   }
+  ]
+ }
+}
