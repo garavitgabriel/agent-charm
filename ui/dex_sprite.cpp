@@ -23,6 +23,7 @@ static_assert(CELL_W * CHARM_SPRITE_SCALE_FULL <= FULL_W && CELL_H * CHARM_SPRIT
 
 const char *const POSE_NAMES[DEX_POSE_COUNT] = {
     "idle", "listening", "working", "attention", "done", "speaking", "asleep", "offline", "error",
+    "ask_yes", "offer_bag", "lift_bag", "lookout", "paper", "show_phone",
 };
 const char *const OUTFIT_NAMES[DEX_OUTFIT_COUNT] = {
     "default", "gameday", "reading", "food", "code", "cat",
@@ -235,6 +236,9 @@ void dex_tick(uint32_t now_ms) {
 dex_pose_t dex_get_pose(void) { return pose; }
 dex_outfit_t dex_get_outfit(void) { return outfit; }
 dex_size_t dex_get_size(void) { return size; }
+
+// Stub until frame metadata carries overlay points (smooth-sprite batch): the UI uses its fallback.
+bool dex_get_point_area(dex_point_t, lv_area_t *) { return false; }
 
 const char *dex_pose_name(dex_pose_t p) { return p < DEX_POSE_COUNT ? POSE_NAMES[p] : "?"; }
 const char *dex_outfit_name(dex_outfit_t o) { return o < DEX_OUTFIT_COUNT ? OUTFIT_NAMES[o] : "?"; }

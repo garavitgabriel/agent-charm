@@ -19,6 +19,12 @@ POSES = (
     "asleep",
     "offline",
     "error",
+    "ask_yes",
+    "offer_bag",
+    "lift_bag",
+    "lookout",
+    "paper",
+    "show_phone",
 )
 OUTFITS = ("default", "gameday", "reading", "food", "code", "cat")
 

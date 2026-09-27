@@ -17,7 +17,9 @@ Writer = Callable[..., Path]
 def _enum(header: str, name: str) -> list[str]:
     body = re.search(r"enum " + name + r" \{(.*?)\};", header, re.S)
     assert body, name
-    items = re.findall(r"DEX_[A-Z]+_([A-Z]+)", body.group(1))
+    # Strip comments first, then match whole enumerator names (they may contain underscores).
+    text = re.sub(r"//[^\n]*", "", body.group(1))
+    items = re.findall(r"\bDEX_(?:POSE|OUTFIT)_([A-Z_]+)\b", text)
     return [i.lower() for i in items if i != "COUNT"]
 
 
