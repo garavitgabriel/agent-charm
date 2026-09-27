@@ -246,9 +246,9 @@ Accent candidates tested: purple `#B3A6FF`, gold, mint `#9FE3C4`
 | # | Surface | Reference | Dex pose | Element budget |
 |---|---|---|---|---|
 | 1 | Home / Idle | `01-home.png` | idle hero, mug, steam | Dex + one status line ("Nothing needs you") |
-| 2 | Listening | `02-listening.png` | lean-in, cupped hand | "I'm listening." + voice stream + separator-as-fuse (30 s) |
+| 2 | Listening | `02-listening.png` | lean-in, cupped hand | "I'm listening." + voice stream + separator-as-fuse (**25 s**: the firmware/UI listen limit) |
 | 3 | Working | `03-working.png` | head down over phone | one-line what ("Asking Coach Beard…") + Cancel |
-| 4 | Answer | `04-answer.png` | talking, palm toward answer | ≤ 60 words; footer "Full version in Telegram" |
+| 4 | Answer | `04-answer.png` | talking, palm toward answer | ≤ 60 words; footer is **server-set**: "Shortened. Ask Dex for the rest." (PROTOCOL clarification #5). The PNG still shows the old Telegram footer; **the contract wins**. |
 | 5 | Decision | `05-decision.png` | holds up the "Yes" sign (the default) | question + "Default: …" + Yes / No / Later |
 | 6 | Money preview | `06-money-preview.png` | bag at chest | merchant (18), **total (40) + COP (32)**, items · ETA · place (18), "Hold Dex to order" (32/600, gold) |
 | 7 | Money mid-hold | `07-money-mid-hold.png` | on toes, bag overhead (1.72×), filling gold | "Ordering…" (32) |
@@ -260,9 +260,7 @@ Accent candidates tested: purple `#B3A6FF`, gold, mint `#9FE3C4`
 | 13 | Offline | `13-offline.png` | frowns at no-signal phone | "No connection" + Try again |
 | 14 | Needs more | `14-needs-more.png` | shrug, palms up | question + two choice pills |
 
-Reading-mode surfaces (reading home, lead + scrollable detail, Saved, speak/quiet, text size) are
-**being rendered now** and will be appended here as § 11.8. Until then, build them as placeholders
-using these tokens.
+Reading-mode surfaces are in **§ 11.8**.
 
 ### 11.4 Motion (summary; `motion.md` is the source of truth)
 
@@ -275,8 +273,9 @@ change is about 400 ms total.
 
 ### 11.5 Copy rules
 
-- The spoken reply is **≤ 2 sentences**; cards are **≤ 60 words**. Anything longer goes to Telegram or
-  a notes app and is never read aloud.
+- The spoken reply is **≤ 2 sentences**; cards are **≤ 60 words**. Anything longer is never read aloud.
+  The truncation footer is server-set: "Shortened. Ask Dex for the rest." Nothing goes to Telegram yet,
+  so never claim it does.
 - Headline-first and short ("Light day.", "Nothing needs you"). State the default and the deadline
   on decisions ("Default: yes, Sunday.").
 - **Dex never promises to nudge, remind or ping.** He waits to be looked at.
@@ -284,6 +283,32 @@ change is about 400 ms total.
 - Never fake a state: no listening pose unless the mic is on, and no Done before the backend
   confirms. Stale data says so.
 - Voice (critics picked it independently as the thing to keep): "Nothing needs you" is the house tone.
+
+### 11.8 Reading mode (rendered 2026-09-27)
+
+Source of truth: [`design/final/reading/reading.md`](design/final/reading/reading.md) and
+`design/final/reading/*.png`. The canvas is https://example.com/design-canvas. It uses
+the same tokens, anchor, separator and gold accent as § 11.2. Dex wears reading glasses and holds an
+indigo book (`#7274B8` / `#50529A` / `#3A3B72`, chosen to stay clear of the gold and the teal).
+
+| # | Surface | Reference | Notes |
+|---|---|---|---|
+| R1 | Reading home | `r1-home.png` | Book title (32), author · chapter (18), the state line ("Quiet · text only"), one gold action naming the *other* state |
+| R2 | Answer, lead | `r2-lead.png` | `body` lead at 18 px in one scroll column with `detail`; "Read more"; book · chapter bottom-left. Mouth stays closed in quiet mode. |
+| R3 | Answer, detail scrolled | `r3-detail.png` | The one long-text surface. Rests on whole lines. The scroll cue is an FG2 segment riding the separator (not gold, not a pager). |
+| R4 | Quiet (default) / Voice on | `r4-quiet.png`, `r4-speak.png` | The state is written in words. It changes only after the server confirms. A 1.6 s confirmation pose, then back to R1. |
+| R5 | Text size | `r5-size-small.png`, `r5-size-large.png` | The reading detail scale is **18 / 22 / 26 px**, line height ≈ 1.45, used **only** in the detail view. Larger / Smaller actions. |
+| R6 | Saved | `r6-saved.png` | The verbatim thought in quotes, plus book · chapter, and Dex tucking a note into the book. **Only after the store confirms; no ✓.** A failed save reuses the Offline pose. |
+
+Sanctioned exceptions to § 11.6 (reading only): R5 reuses R3's pose (same surface, different size); R1
+and R4-quiet share a layout; the separator carries the scroll cue; the lead is set at 18 px.
+**Sprites:** +20 frames (glasses 2, book-hug 3, show-page 5, read/page-turn 3, shh 2, voice-on 2,
+tuck 3), about 1.47 MB raw. Night variants are not budgeted (+20 if baked).
+
+### Contract overrides (build wins over the render)
+
+- Answer footer: "Shortened. Ask Dex for the rest." (server-set, PROTOCOL #5), not "Full version in Telegram".
+- Listening fuse: 25 s (firmware listen limit), not 30 s. The fuse spans 320 px over 25 s.
 
 ### 11.6 Pre-merge checklist (the bones + kill list, verbatim from `design/bones.md`)
 
