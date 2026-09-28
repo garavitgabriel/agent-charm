@@ -63,12 +63,11 @@ constexpr lv_coord_t PILL_H = 56, PILL_R = 28;
 
 // ---- Dex geometry (identical on every screen) ----------------------------------------------
 constexpr lv_coord_t DEX_HIP_X = 236, DEX_HIP_Y = 379;
-constexpr lv_coord_t FLOOR_CX = 236, FLOOR_CY = 433, FLOOR_RX = 46, FLOOR_RY = 7;
+// The ground shadow (FLOOR / FLOOR_N) is baked into Dex's frames (cell 192x224, chief ruling).
 
 // Overlay fallbacks, measured from the reference PNGs, for when dex_get_point_area() returns false.
 constexpr lv_area_t BAG_PREVIEW = {205, 332, 267, 403};  // 06: the bag at his chest (the hold target)
 constexpr lv_area_t BAG_LIFT = {272, 227, 333, 305};     // 07: the bag overhead, filling
-constexpr lv_area_t BAG_DONE = {289, 352, 335, 405};     // 08: the full bag handed over
 constexpr lv_area_t HAND_CUP = {296, 296, 316, 316};     // 02: the cupped hand the stream lands in
 constexpr lv_coord_t PLACARD_CX = 307, PLACARD_CY = 261; // 05: the "Yes" placard's face
 

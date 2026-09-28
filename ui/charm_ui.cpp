@@ -80,7 +80,7 @@ struct UiState {
 // fuse, scroll thumb) under Dex, and the overlay above him (voice stream, placard, bag).
 struct Layers {
     lv_obj_t *root = nullptr, *base = nullptr, *overlay = nullptr;
-    lv_obj_t *floor = nullptr, *sep = nullptr, *fuse = nullptr, *thumb = nullptr;
+    lv_obj_t *sep = nullptr, *fuse = nullptr, *thumb = nullptr;
     lv_point_t sep_pts[2], fuse_pts[2], thumb_pts[2];
     lv_obj_t *stream[STREAM_LINES] = {};
     lv_point_t stream_pts[STREAM_LINES][STREAM_PTS];
@@ -376,12 +376,6 @@ lv_area_t point_or(dex_point_t which, const lv_area_t &fallback) {
     return fallback;
 }
 
-// Placeholder Dex art carries no overlay points; the UI then draws the accent props itself.
-bool placeholder_art() {
-    lv_area_t a;
-    return !dex_get_point_area(DEX_POINT_HAND, &a) && !dex_get_point_area(DEX_POINT_BAG, &a);
-}
-
 lv_obj_t *plain(lv_obj_t *parent) {
     lv_obj_t *o = lv_obj_create(parent);
     lv_obj_remove_style_all(o);
@@ -451,6 +445,11 @@ lv_obj_t *text(lv_obj_t *parent, const std::string &s, const lv_font_t *font, ui
         } else {
             lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
         }
+    } else {
+        // Content width, never wrapped: in WRAP mode LVGL can push the last glyph ("…") onto a
+        // hidden second line when the text exactly fills its own measured width.
+        lv_label_set_long_mode(l, LV_LABEL_LONG_CLIP);
+        lv_obj_set_width(l, LV_SIZE_CONTENT);
     }
     lv_obj_set_pos(l, x, y);
     return l;
@@ -517,6 +516,13 @@ lv_obj_t *text_action(const std::string &label, lv_coord_t y, lv_coord_t w = tok
 
 // A filled action: accent fill, 56 px (72 px for two lines), radius 28, no stroke.
 lv_obj_t *pill(const std::string &label, lv_coord_t y, lv_coord_t w, lv_coord_t padx = 18) {
+    // Grow (up to the rail's 172 + a hand's width) until the label fits two lines: LVGL sets
+    // Instrument Sans a few px wider than the browser the reference was rendered in.
+    auto lines_at = [&](lv_coord_t ww) { return text_lines(label, tok::f24s(), tok::LH_ACTION, (lv_coord_t)(ww - 2 * padx)); };
+    lv_coord_t one = w;
+    while (one < tok::RAIL_MAX_W && lines_at(one) > 1) one = (lv_coord_t)(one + 4);
+    if (lines_at(one) == 1) w = one;  // one line when it fits the rail
+    while (w < 196 && lines_at(w) > 2) w = (lv_coord_t)(w + 4);
     lv_obj_t *b = plain(W.page);
     lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
     const int lines = LV_MIN(2, text_lines(label, tok::f24s(), tok::LH_ACTION, (lv_coord_t)(w - 2 * padx)));
@@ -696,10 +702,7 @@ void build_answer(const HeldCard &h, bool stale) {
 }
 
 void placard_face(const std::string &label) {
-    const lv_coord_t w = 68, hgt = 56;
-    if (placeholder_art()) {
-        rect(W.over, tok::PLACARD_CX - w / 2, tok::PLACARD_CY - hgt / 2, w, hgt, tok::ACC, 12);  // no sign in the art yet
-    }
+    // The sign itself (gold, 5° tilt) is in the ask_yes frames; the UI sets only its word.
     text(W.over, label, tok::f24s(), tok::ON_ACC, (lv_coord_t)(tok::PLACARD_CX - text_width(label, tok::f24s()) / 2),
          (lv_coord_t)(tok::PLACARD_CY - 13), 26);
 }
@@ -789,11 +792,13 @@ void build_money(const HeldCard &h, bool stale) {
     if (!note.empty()) line(note, tok::f18r(), tok::FG2, tok::PAD, 146, tok::LH18, tok::CONTENT_W, 2);
 
     W.money_sent = !h.sent_action.empty();
-    W.hold_label = text(W.page, "", tok::f32s(), tok::ACC, tok::RAIL_X, 300, tok::LH_HOLD, 172);
+    W.hold_label = text(W.page, "", tok::f32s(), tok::ACC, tok::RAIL_X, 300, tok::LH_HOLD);  // explicit line break
     W.enter_rail.push_back(W.hold_label);
 
     // The fill is drawn over Dex's bag (overlay), never baked into the sprite.
     W.bag_fill = rect(W.over, 0, 0, 1, 1, tok::ACC);
+    // The bag's side plane (ACC_D), as the design's filled bag carries it.
+    rect(W.bag_fill, 0, 0, 1, LV_PCT(100), tok::ACC_D);
     W.bag_edge = rect(W.over, 0, 0, 1, 2, tok::INK);
     lv_obj_add_flag(W.bag_fill, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(W.bag_edge, LV_OBJ_FLAG_HIDDEN);
@@ -850,12 +855,6 @@ void build_done(const HeldCard &h) {
     if (!c.address_label.empty()) where += (where.empty() ? "" : " \xC2\xB7 ") + c.address_label;
     if (!where.empty()) line(where, tok::f18r(), tok::FG2, tok::PAD, tok::PAD + 82, tok::LH18, tok::CONTENT_W, 1);
     // The bag he hands over is full accent, baked into the `done` frames (chief ruling): no overlay.
-    // Placeholder art has no bag, so only then is it drawn here.
-    if (placeholder_art()) {
-        const lv_area_t box = tok::BAG_DONE;
-        rect(W.over, (lv_coord_t)(box.x1 + 3), (lv_coord_t)(box.y1 + 3), (lv_coord_t)(lv_area_get_width(&box) - 6),
-             (lv_coord_t)(lv_area_get_height(&box) - 6), tok::ACC, 4);
-    }
     W.done_bag = true;
 }
 
@@ -1320,7 +1319,6 @@ void rebuild() {
 
     const bool night = s == CharmSurface::Night;
     lv_obj_set_style_line_color(L.sep, lv_color_hex(night ? tok::LINE_N : tok::LINE), 0);
-    lv_obj_set_style_bg_color(L.floor, lv_color_hex(night ? tok::FLOOR_N : tok::FLOOR), 0);
 
     dex_set_size(DEX_SIZE_FULL);  // design § 11.6: full body at the one anchor, always
     dex_set_pose(compute_pose(s));
@@ -1426,13 +1424,20 @@ void update_bag(uint32_t now) {
         return;
     }
     // Bottom -> top inside the bag, in whichever position the bag is in this frame.
+    // The exported box bounds the whole (slightly rotated) bag, handles included; the flat fill
+    // stays inside its body: below the handles (top 22 %) and clear of the tilted sides.
     const lv_area_t box = point_or(DEX_POINT_BAG, lifting ? tok::BAG_LIFT : tok::BAG_PREVIEW);
-    const lv_coord_t x = (lv_coord_t)(box.x1 + 3), w = (lv_coord_t)(lv_area_get_width(&box) - 6);
-    const lv_coord_t full = (lv_coord_t)(lv_area_get_height(&box) - 6);
-    const lv_coord_t h = (lv_coord_t)lroundf(fill * (float)full);
-    const lv_coord_t top = (lv_coord_t)(box.y2 - 3 - h);
+    const lv_coord_t bw = lv_area_get_width(&box), bh = lv_area_get_height(&box);
+    const lv_coord_t x = (lv_coord_t)(box.x1 + bw * 16 / 100), w = (lv_coord_t)(bw * 68 / 100);
+    const lv_coord_t body_top = (lv_coord_t)(box.y1 + bh * 26 / 100), body_bottom = (lv_coord_t)(box.y2 - bh * 8 / 100);
+    const lv_coord_t h = (lv_coord_t)lroundf(fill * (float)(body_bottom - body_top));
+    const lv_coord_t top = (lv_coord_t)(body_bottom - h);
     lv_obj_set_pos(W.bag_fill, x, top);
     lv_obj_set_size(W.bag_fill, w, h);
+    if (lv_obj_t *side = lv_obj_get_child(W.bag_fill, 0)) {
+        lv_obj_set_x(side, (lv_coord_t)(w - w * 22 / 100));
+        lv_obj_set_width(side, (lv_coord_t)(w * 22 / 100));
+    }
     lv_obj_clear_flag(W.bag_fill, LV_OBJ_FLAG_HIDDEN);
     if (fill < 1.0f) {  // the fill edge carries an ink line
         lv_obj_set_pos(W.bag_edge, x, (lv_coord_t)(top - 1));
@@ -1766,15 +1771,17 @@ void create_layers(lv_obj_t *screen) {
 
     L.base = plain(L.root);
     lv_obj_set_size(L.base, CHARM_W, CHARM_H);
-    L.floor = rect(L.base, tok::FLOOR_CX - tok::FLOOR_RX, tok::FLOOR_CY - tok::FLOOR_RY, 2 * tok::FLOOR_RX,
-                   2 * tok::FLOOR_RY + 1, tok::FLOOR, LV_RADIUS_CIRCLE);
     L.sep = hline(L.base, L.sep_pts, tok::SEP_X0, tok::SEP_X1, tok::SEP_Y, tok::LINE);
     L.fuse = hline(L.base, L.fuse_pts, tok::SEP_X0, tok::SEP_X0, tok::SEP_Y, tok::ACC);
     L.thumb = hline(L.base, L.thumb_pts, tok::SEP_X0, tok::SEP_X0, tok::SEP_Y, tok::FG2);
     lv_obj_add_flag(L.fuse, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(L.thumb, LV_OBJ_FLAG_HIDDEN);
 
-    dex_create(screen);  // after the root: Dex draws over the content and the base layer
+    // Dex's frames are opaque (pre-composited on #000, § 11.7), so his 192x224 cell would black out
+    // any rail text reaching past x = 160. He goes under the content; overlays that touch him (voice
+    // stream, bag fill, placard text) go above him.
+    dex_create(screen);
+    lv_obj_move_background(lv_obj_get_child(screen, -1));
 
     L.overlay = plain(screen);
     lv_obj_set_size(L.overlay, CHARM_W, CHARM_H);
