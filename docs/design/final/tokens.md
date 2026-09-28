@@ -38,7 +38,7 @@ Each candidate has three steps. The base is used for UI. The side-plane and high
 | `ACC_L` (highlight) | `#F9DC94` |
 | `ACC_N` (night) | `#5E4A1C` |
 
-Rejected candidates, kept for reference (see `docs/internal/design-sprint/accents/`):
+Rejected candidates, kept for reference:
 
 | Candidate | Base | Side plane | Highlight |
 |---|---|---|---|

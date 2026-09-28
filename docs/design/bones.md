@@ -3,7 +3,7 @@ title: Dex Charm — bones v1 (after round 1)
 type: design-notes
 created: 2026-09-25
 updated: 2026-09-25
-related: [../BRIEF.md, ../internal/design-sprint/canvas-prompts-r1.md]
+related: [../BRIEF.md]
 tags: [design-sprint, bones]
 ---
 

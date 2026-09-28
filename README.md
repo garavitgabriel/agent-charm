@@ -238,7 +238,6 @@ Say you want a cooking agent, **Chef**, next to Dex. Follow the path Coach took:
 | [`tools/`](tools/) | `charm-assets`: sprites and fonts → C code |
 | [`scripts/`](scripts/) | `demo.sh` (server + sim in one command) and the live integration test |
 | [`deploy/vps/`](deploy/vps/) | Docker deploy and public-endpoint notes |
-| [`docs/internal/`](docs/internal/) | Build logs and design-sprint records (history, not maintained) |
 
 ## Contributing
 

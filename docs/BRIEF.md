@@ -205,8 +205,7 @@ original firmware is already backed up (Margin repo, `.local/backups/`).
 [`design/final/tokens.md`](design/final/tokens.md) and [`design/final/motion.md`](design/final/motion.md).
 The reference screens are [`design/final/*.png`](design/final/) at 368×448, and their generating source
 is [`design/final/src/`](design/final/src/). **Implement from the final render, not from a critic report
-or a chat screenshot.** Evidence and history: [`design/bones.md`](design/bones.md),
-and the design-sprint records in `docs/internal/design-sprint/`.
+or a chat screenshot.** Evidence and history: [`design/bones.md`](design/bones.md).
 
 ### 11.1 Direction
 
@@ -236,8 +235,8 @@ is alive, not from decoration. **There is no clock anywhere.**
 | Anchor zone | (0, 209, 368, 239): Dex, his props, the action rail (left of Dex), the voice stream |
 | Dex placement | hip anchor **(236, 379)**, scale **0.62**, full body, **identical on every screen** |
 
-Accent candidates tested: purple `#B3A6FF`, gold, mint `#9FE3C4`
-(`internal/design-sprint/accents/accent-compare.png`). **Gold picked by the owner, 2026-09-27.**
+Accent candidates tested: purple `#B3A6FF`, gold, mint `#9FE3C4`.
+**Gold picked by the owner, 2026-09-27.**
 
 ### 11.3 Surfaces (reference PNG → pose)
 
