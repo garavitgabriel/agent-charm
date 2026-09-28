@@ -160,6 +160,7 @@ class Device:
     in_speech: bool = False
     errors: list[str] = field(default_factory=list)
     _waiters: list[tuple[str, asyncio.Future[dict[str, Any]]]] = field(default_factory=list)
+    _checks: list[tuple[Any, asyncio.Future[dict[str, Any]]]] = field(default_factory=list)
 
     async def send(self, message: dict[str, Any]) -> None:
         await self.ws.send(json.dumps(message))
@@ -170,7 +171,18 @@ class Device:
         self._waiters.append((kind, future))
         return future
 
+    def wait_until(self, check: Any) -> asyncio.Future[dict[str, Any]]:
+        """A future resolved by the next text frame for which `check(frame)` is true."""
+        future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
+        self._checks.append((check, future))
+        return future
+
     def _resolve(self, message: dict[str, Any]) -> None:
+        for waiter in list(self._checks):
+            check, future = waiter
+            if not future.done() and check(message):
+                future.set_result(message)
+                self._checks.remove(waiter)
         keys = {message["type"]}
         if message["type"] == "state":
             keys.add(f"state:{message.get('value')}")
@@ -204,7 +216,7 @@ class Device:
         except ConnectionClosed as exc:
             code = exc.rcvd.code if exc.rcvd else None
             print(f"{_stamp(self.t0)} connection closed ({code})")
-            for _, future in self._waiters:
+            for _, future in [*self._waiters, *self._checks]:
                 if not future.done():
                     future.set_exception(exc)
 
@@ -366,14 +378,65 @@ async def talk(device: Device, source: str, args: argparse.Namespace) -> None:
         pcm = await pcm_from_file(args.wav)
     else:
         pcm = b""
-    done = device.wait_for("state:idle")
+    # Done when the server goes idle, or when Coach takes it as a walk-away job.
+    done = device.wait_until(
+        lambda m: (
+            (m.get("type") == "state" and m.get("value") == "idle")
+            or (m.get("type") == "card" and _is_coach_job(m["card"]))
+        )
+    )
     if source == "mic":
         await stream_mic(device)
     else:
         await stream_pcm(device, pcm)
-    await asyncio.wait_for(done, timeout=args.timeout)
+    ended = await asyncio.wait_for(done, timeout=args.timeout)
     await device.player.drain()
     print(f"\ntimings (client-observed): {device.marks.summary()}")
+    if ended.get("type") == "card" and args.wait_coach:
+        await wait_for_coach(device, args)
+
+
+def _is_coach_job(card: dict[str, Any]) -> bool:
+    return card.get("kind") == "job" and card.get("source") == "coach"
+
+
+async def wait_for_coach(device: Device, args: argparse.Namespace) -> None:
+    """Stay connected through Coach's walk-away job; with --hear, press Hear it on his card."""
+    dispatched = time.monotonic()
+    print(f"{_stamp(device.t0)} waiting for Coach (up to {args.coach_timeout:g}s)…")
+    attention = device.wait_until(
+        lambda m: (
+            m.get("type") == "state" and m.get("value") == "attention" and m.get("agent") == "coach"
+        )
+    )
+    await asyncio.wait_for(attention, timeout=args.coach_timeout)
+    arrived = time.monotonic()
+    print(f"{_stamp(device.t0)} Coach's result after {arrived - dispatched:.1f}s")
+    result = next(
+        (
+            c
+            for c in reversed(list(device.cards.values()))
+            if c.get("source") == "coach" and c.get("kind") != "job"
+        ),
+        None,
+    )
+    if not args.hear or result is None:
+        return
+    if not any(a.get("id") == "hear" for a in result.get("actions", [])):
+        print(f"{_stamp(device.t0)} card {result['id']} has no Hear it (a notice?)")
+        return
+    device.marks = Marks()
+    pressed = time.monotonic()
+    idle = device.wait_for("state:idle")
+    print(f"{_stamp(device.t0)} action {result['id']}:hear")
+    await device.send({"type": "action", "card_id": result["id"], "action": "hear"})
+    await asyncio.wait_for(idle, timeout=60)
+    await device.player.drain()
+    first = f"{device.marks.speech_start - pressed:.2f}s" if device.marks.speech_start else "n/a"
+    print(
+        f"hear timings: first audio {first} · total {time.monotonic() - pressed:.2f}s "
+        f"(speech {device.marks.speech_bytes / p.BYTES_PER_SECOND:.1f}s of audio)"
+    )
 
 
 async def run(args: argparse.Namespace, config: Config) -> int:
@@ -453,6 +516,15 @@ def main() -> None:
     parser.add_argument("--token", help="default CHARM_TOKEN")
     parser.add_argument("--device-id", default=f"charm-client-{os.getpid()}")
     parser.add_argument("--timeout", type=float, default=180.0, help="seconds to wait for Dex")
+    parser.add_argument(
+        "--wait-coach",
+        action="store_true",
+        help="after a Coach question, stay connected until his result card arrives",
+    )
+    parser.add_argument("--hear", action="store_true", help="with --wait-coach: press Hear it")
+    parser.add_argument(
+        "--coach-timeout", type=float, default=330.0, help="seconds to wait for Coach's result"
+    )
     args = parser.parse_args()
     if (
         not (args.say or args.wav or args.mic or args.edition or args.pending or args.action)

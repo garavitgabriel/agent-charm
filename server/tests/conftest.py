@@ -140,8 +140,11 @@ class Client:
                 if isinstance(frame, dict) and done(frame):
                     return frames
 
-    async def until_idle(self, timeout: float = 5.0) -> list[dict[str, Any] | bytes]:
-        return await self.until(lambda m: m == {"type": "state", "value": "idle"}, timeout)
+    async def until_idle(
+        self, timeout: float = 5.0, agent: str = "dex"
+    ) -> list[dict[str, Any] | bytes]:
+        idle = {"type": "state", "value": "idle", "agent": agent}
+        return await self.until(lambda m: m == idle, timeout)
 
     async def silent_for(self, seconds: float) -> list[dict[str, Any] | bytes]:
         frames: list[dict[str, Any] | bytes] = []
@@ -194,7 +197,7 @@ class Harness:
         )
         welcome = await client.recv()
         assert isinstance(welcome, dict) and welcome["type"] == "welcome"
-        assert await client.recv() == {"type": "state", "value": "idle"}
+        assert await client.recv() == {"type": "state", "value": "idle", "agent": "dex"}
         return client
 
 

@@ -28,6 +28,17 @@ from .cards import (
     load_cards,
     new_answer_id,
     notice_card,
+    say_text,
+)
+from .coach import (
+    ON_IT,
+    CoachDesk,
+    Delivery,
+    LedgerError,
+    coach_notice,
+    latest_delivered,
+    ledger_card,
+    why_question,
 )
 from .config import Config
 from .intents import EnterReading, LeaveReading, SaveThought, SetChapter, SetSpeech, parse
@@ -41,6 +52,7 @@ from .reading import (
     reading_messages,
     saved_card,
 )
+from .routing import COACH, DEX, Route, route
 from .stt import STT, TooShort
 from .tts import TTS, TTSError
 
@@ -71,6 +83,13 @@ class Deps:
     notes: NoteStore = field(
         default_factory=lambda: UnavailableStore("no note store is configured")
     )
+    # Coach Beard: his walk-away jobs (shared by every connection; disabled by default) and his
+    # own voice. None speaks Coach with `tts` (tests that don't care which voice).
+    coach: CoachDesk = field(default_factory=lambda: CoachDesk(None, "America/Chicago"))
+    coach_tts: TTS | None = None
+
+    def tts_for(self, agent: str) -> TTS:
+        return self.coach_tts if agent == COACH and self.coach_tts is not None else self.tts
 
 
 @dataclass
@@ -105,6 +124,7 @@ class Session:
     displayed: set[str] = field(default_factory=set)
     last_state: str = "idle"
     last_timings: Timings | None = None
+    agent: str = DEX  # the character on screen; every state names it
     _capture: bytearray | None = None
     _discarding: bool = False
     _job: asyncio.Task[None] | None = None
@@ -120,7 +140,7 @@ class Session:
     async def send_state(
         self, value: str, label: str | None = None, agent: str | None = None
     ) -> None:
-        await self.send(p.state(value, label, agent))
+        await self.send(p.state(value, label, agent or self.agent))
 
     async def send_error(self, code: str, text: str) -> None:
         await self.send(p.error(code, text))
@@ -134,13 +154,25 @@ class Session:
         self.cards.pop(card_id, None)
         await self.send({"type": "dismiss", "card_id": card_id})
 
-    async def send_mode(self) -> None:
-        """`mode{value, book?}`: the book is present in reading mode."""
+    async def send_mode(self, announce_agent: bool = False) -> None:
+        """`mode{value, book?, agent?}`: the book is present in reading mode.
+
+        `agent` is sent whenever the character changes (and while it's Coach); the device assumes
+        Dex when it's absent.
+        """
         message: dict[str, Any] = {"type": "mode", "value": self.deps.books.mode}
         reading = self.deps.books.reading
         if reading is not None:
             message["book"] = book_json(reading.book)
+        if announce_agent or self.agent != DEX:
+            message["agent"] = self.agent
         await self.send(message)
+
+    async def set_agent(self, agent: str) -> None:
+        """Switch the character on screen; `mode{…, agent}` tells the device."""
+        if agent != self.agent:
+            self.agent = agent
+            await self.send_mode(announce_agent=True)
 
     async def send_setting(self, name: str) -> None:
         """Echo the *effective* value; the device shows state only from this echo."""
@@ -149,10 +181,28 @@ class Session:
         await self.send({"type": "setting", "name": name, "value": value})
 
     async def greet(self) -> None:
-        """On connect: restore an active reading session (it outlives connections)."""
+        """On connect: restore an active reading session and Coach's jobs (both outlive
+        connections): a job still running, and any result that finished while no device was
+        here."""
         if self.deps.books.reading is not None:
             await self.send_mode()
             await self.send_setting("speech")
+        desk = self.deps.coach
+        desk.attach(self._coach_done)
+        waiting = desk.undelivered()
+        if desk.jobs or waiting:
+            await self.set_agent(COACH)
+        for job in list(desk.jobs.values()):
+            await self.send_card(job.card)
+        if desk.jobs:
+            await self.send_state("working", label=ON_IT.get(self._job_language(), ON_IT["en"]))
+        for delivery in waiting:
+            await self._deliver(delivery)
+        if waiting and not desk.jobs:
+            await self.send_state("attention")
+
+    def _job_language(self) -> str:
+        return next((j.language for j in self.deps.coach.jobs.values()), "en")
 
     async def _mode_changed(self) -> None:
         await self.send_mode()
@@ -270,13 +320,18 @@ class Session:
             return
         for card in cardset.pending:
             await self.send_card(card)
-        if cardset.pending and not self.busy:
+        coach = [j.card for j in self.deps.coach.jobs.values()]
+        coach += [d.card for d in self.deps.coach.results]
+        for card in coach:
+            await self.send_card(card)
+        if (cardset.pending or coach) and not self.busy:
             await self.send_state("attention")
 
     async def _on_displayed(self, message: dict[str, Any]) -> None:
         card_id = message.get("id")
         if isinstance(card_id, str):
             self.displayed.add(card_id)
+            self.deps.coach.mark_displayed(card_id)
             log.info("displayed %s", card_id)
 
     async def _on_event(self, message: dict[str, Any]) -> None:
@@ -324,6 +379,9 @@ class Session:
             log.warning("card %s has no action %r; ignored", card_id, action_id)
             return
         kind = card["kind"]
+        if card.get("source") == COACH and action_id in ("hear", "why", "later"):
+            await self._coach_action(card, str(action_id), held_ms)
+            return
         fixture = bool(card.get("data", {}).get("fixture")) if kind == "money" else None
 
         if kind == "money" and "hold_ms" in spec:
@@ -415,6 +473,12 @@ class Session:
                 log.info("intent %s", type(intent).__name__)
                 await self._command(intent, heard.language)
                 return
+            to = route(heard.text, reading=books.reading is not None)
+            log.info("route %s (%s)", to.agent, to.reason)  # the agent only, never the words
+            if to.agent == COACH:
+                await self._coach(to, heard.language)
+                return
+            await self.set_agent(DEX)
             await self.send_state("working", agent="dex")
 
             question: Message = {"role": "user", "content": heard.text}
@@ -565,6 +629,156 @@ class Session:
         await self.send_card(not_saved_card(card_id, reason, language, self.deps.config.tz, book))
         await self.send_state("idle")
 
+    # --- Coach Beard ---------------------------------------------------------------------------
+
+    async def _coach(self, to: Route, language: str) -> None:
+        """A Coach question: the fast path from his ledger, or a walk-away job."""
+        desk = self.deps.coach
+        tz = self.deps.config.tz
+        if not desk.enabled:
+            es = language == "es"
+            title = "Coach no está conectado" if es else "Coach isn't connected"
+            body = (
+                "Coach no está activado en este servidor, así que no se le preguntó nada."
+                if es
+                else "Coach isn't switched on for this server, so nothing was asked."
+            )
+            await self.send_card(coach_notice(f"ntc-{uuid.uuid4().hex[:10]}", title, body, tz))
+            await self.send_state("idle")
+            return
+        await self.set_agent(COACH)
+        if to.latest_call:
+            await self._latest_call(language)
+            return
+        if desk.busy:
+            await self._fail("busy", "Coach is still on the last one. His call will show up here.")
+            return
+        card = desk.submit(to.question, language)
+        await self.send_state("working", label=ON_IT.get(language, ON_IT["en"]))
+        await self.send_card(card)  # you can put it down now
+
+    async def _latest_call(self, language: str) -> None:
+        """ "What's Coach's latest call?": read his ledger (read-only), never a fresh run."""
+        started = time.monotonic()
+        desk = self.deps.coach
+        tz = self.deps.config.tz
+        es = language == "es"
+        await self.send_state("working")
+        card_id = f"ntc-{uuid.uuid4().hex[:10]}"
+        if desk.ledger is None:
+            title = "Sin registro" if es else "No ledger"
+            text = "Su registro no está configurado." if es else "His ledger isn't set up."
+            await self.send_card(coach_notice(card_id, title, text, tz))
+            await self.send_state("idle")
+            return
+        try:
+            entry = latest_delivered(await desk.ledger.tail())
+        except LedgerError as exc:
+            title = "No pude leer su registro" if es else "Couldn't read his ledger"
+            body = (
+                f"No pude leer las jugadas de Coach ahora ({exc}). No adivino."
+                if es
+                else f"I couldn't read Coach's calls right now ({exc}). No guessing."
+            )
+            await self.send_card(coach_notice(card_id, title, body, tz))
+            await self.send_state("idle")
+            return
+        if entry is None:
+            title = "Sin jugadas" if es else "No call on file"
+            body = (
+                "Coach todavía no ha entregado ninguna jugada."
+                if es
+                else "Coach hasn't delivered a call yet."
+            )
+            await self.send_card(coach_notice(card_id, title, body, tz))
+            await self.send_state("idle")
+            return
+        card = ledger_card(entry, language, tz, datetime.now(UTC))
+        log.info("coach latest call read in %.2fs", time.monotonic() - started)
+        await self._speak_card(card, say_text(str(card.get("body", ""))), language, send=True)
+        log.info("coach fast path total %.2fs", time.monotonic() - started)
+
+    async def _speak_card(self, card: Card, say: str, language: str, send: bool) -> None:
+        """Optionally send `card`, then speak `say` in the current character's voice → idle."""
+        speaker: _Speaker | None = None
+        if say and self.deps.books.speech_value == "on":
+            speaker = _Speaker(self, language, card["id"], self.deps.tts_for(self.agent))
+        try:
+            if speaker is not None:
+                speaker.say(say)
+                speaker.end()
+                speaker.answer_complete = True
+            try:
+                if send:
+                    await self.send_card(card)
+            finally:
+                if speaker is not None:
+                    speaker.card_sent.set()
+            if speaker is not None:
+                await speaker.wait()
+            await self.send_state("idle")
+        finally:
+            if speaker is not None:
+                await speaker.abort()
+
+    async def _coach_done(self, delivery: Delivery) -> None:
+        """A walk-away job finished: its card, the job card dismissed, attention. No speech."""
+        job = self._job
+        if job is not None and not job.done():  # don't cut into a Dex answer or a hear
+            with contextlib.suppress(BaseException):
+                await asyncio.shield(job)
+        await self.set_agent(COACH)
+        await self._deliver(delivery)
+        await self.send_state("attention")
+
+    async def _deliver(self, delivery: Delivery) -> None:
+        await self.send_card(delivery.card)  # a failure notice replaces the job card (same id)
+        if delivery.card["id"] != delivery.job_id:
+            await self.dismiss(delivery.job_id)
+
+    async def _coach_action(self, card: Card, action: str, held_ms: int | None) -> None:
+        desk = self.deps.coach
+        self._log_action(card, action, held_ms, "logged", None)
+        found = desk.find(card["id"])
+        language = found.language if found is not None else "en"
+        if action == "later":
+            desk.mark_displayed(card["id"])
+            await self.dismiss(card["id"])
+            await self.send_state("idle")
+            return
+        if self.busy:
+            await self._fail("busy", "I'm still on the last one. Cancel it or wait a moment.")
+            return
+        if action == "hear":
+            say = (found.say if found is not None else "") or say_text(str(card.get("body", "")))
+            self._job = asyncio.create_task(self._hear(card, say, language), name="hear")
+            return
+        # why: another walk-away job, with his history (the call is in it when he made it here)
+        if not desk.enabled:
+            await self._coach(Route(COACH, "", "why"), language)
+            return
+        if desk.busy:
+            await self._fail("busy", "Coach is still on the last one. His call will show up here.")
+            return
+        await self.set_agent(COACH)
+        job_card = desk.submit(why_question(card, language), language)
+        await self.send_state("working", label=ON_IT.get(language, ON_IT["en"]))
+        await self.send_card(job_card)
+
+    async def _hear(self, card: Card, say: str, language: str) -> None:
+        """`hear`: Coach speaks the card's body, in his voice, only now that the owner looks."""
+        await self.set_agent(COACH)
+        speaker = _Speaker(self, language, card["id"], self.deps.tts_for(COACH))
+        try:
+            speaker.say(say)
+            speaker.end()
+            speaker.answer_complete = True
+            speaker.card_sent.set()  # the card is already on the device
+            await speaker.wait()
+            await self.send_state("idle")
+        finally:
+            await speaker.abort()
+
     async def _fail(self, code: str, text: str) -> None:
         if self._speaking:  # the answer broke off mid-speech: end it honestly first
             self._speaking = False
@@ -573,6 +787,7 @@ class Session:
         await self.send_state("idle")
 
     async def close(self) -> None:
+        self.deps.coach.detach(self._coach_done)  # his jobs keep running; results wait
         if self._job is not None and not self._job.done():
             self._job.cancel()
             with contextlib.suppress(asyncio.CancelledError):
@@ -593,8 +808,11 @@ class _Speaker:
     speech early. Either way the device gets an honest `speech_end`.
     """
 
-    def __init__(self, session: Session, language: str, card_id: str) -> None:
+    def __init__(
+        self, session: Session, language: str, card_id: str, tts: TTS | None = None
+    ) -> None:
         self.session = session
+        self.tts = tts or session.deps.tts_for(session.agent)
         self.language = language
         self.card_id = card_id
         self.answer_complete = False
@@ -652,7 +870,7 @@ class _Speaker:
 
     async def _synthesize(self, text: str, out: asyncio.Queue[bytes | Exception | None]) -> None:
         try:
-            async for chunk in self.session.deps.tts.stream(text, self.language):
+            async for chunk in self.tts.stream(text, self.language):
                 out.put_nowait(chunk)
         except TTSError as exc:
             out.put_nowait(exc)

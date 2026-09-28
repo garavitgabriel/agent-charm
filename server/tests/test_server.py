@@ -73,7 +73,7 @@ async def test_welcome_then_idle(harness: Harness) -> None:
     assert welcome["type"] == "welcome"
     assert welcome["server"] == SERVER_ID and "proto/0" in welcome["server"]
     assert welcome["tz"] == "America/Chicago" and "T" in welcome["time"]
-    assert json.loads(await ws.recv()) == {"type": "state", "value": "idle"}
+    assert json.loads(await ws.recv()) == {"type": "state", "value": "idle", "agent": "dex"}
 
 
 async def test_ping_pong_and_garbage_is_ignored(harness: Harness) -> None:
@@ -199,7 +199,7 @@ async def test_too_short_or_silent(harness: Harness, pcm: bytes) -> None:
     dev = await harness.device()
     await dev.talk(pcm)
     frames = texts(await dev.until_idle())
-    assert frames[0] == {"type": "state", "value": "transcribing"}
+    assert frames[0] == {"type": "state", "value": "transcribing", "agent": "dex"}
     assert frames[1]["type"] == "error" and frames[1]["code"] == "too_short"
     assert agent.calls == []
 
@@ -264,7 +264,7 @@ async def test_audio_end_cancel_discards(harness: Harness) -> None:
     stt, _, _ = fake(harness.deps)
     dev = await harness.device()
     await dev.talk(tone(1.0), reason="cancel")
-    assert await dev.recv() == {"type": "state", "value": "idle"}
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
     assert await dev.silent_for(0.3) == [] and stt.calls == 0
 
 
@@ -292,7 +292,7 @@ async def test_cancel_while_thinking_drops_the_late_answer(harness: Harness) -> 
     await dev.talk(tone(1.0))
     await dev.until(lambda m: m.get("value") == "working")
     await dev.send({"type": "cancel"})
-    assert await dev.recv() == {"type": "state", "value": "idle"}
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
     assert await dev.silent_for(0.8) == []  # the answer would have landed at 0.4 s
     assert agent.finished == 0 and tts.calls == []
     # The cancelled question isn't remembered as answered context.
@@ -320,7 +320,7 @@ async def test_cancel_while_speaking_sends_speech_end_then_idle(harness: Harness
 async def test_cancel_when_idle_just_confirms_idle(harness: Harness) -> None:
     dev = await harness.device()
     await dev.send({"type": "cancel"})
-    assert await dev.recv() == {"type": "state", "value": "idle"}
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
 
 
 async def test_tts_failure_leaves_the_card_without_speech(harness: Harness) -> None:
@@ -409,13 +409,13 @@ async def test_pending_then_attention(harness: Harness) -> None:
     frames = texts(await dev.until(lambda m: m["type"] == "state"))
     kinds = sorted(m["card"]["kind"] for m in frames if m["type"] == "card")
     assert kinds == ["decision", "job", "money", "notice", "tracker"]
-    assert frames[-1] == {"type": "state", "value": "attention"}
+    assert frames[-1] == {"type": "state", "value": "attention", "agent": "dex"}
 
 
 async def test_status_reports_current_state(harness: Harness) -> None:
     dev = await harness.device()
     await dev.send({"type": "request", "what": "status"})
-    assert await dev.recv() == {"type": "state", "value": "idle"}
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
 
 
 # --- actions ---------------------------------------------------------------------------------
@@ -445,7 +445,7 @@ async def test_decision_is_logged_then_done_then_dismissed(
     dev = await harness.device()
     await _pending(dev)
     await dev.send({"type": "action", "card_id": "dec-001", "action": action})
-    assert await dev.recv() == {"type": "state", "value": "done", "label": label}
+    assert await dev.recv() == {"type": "state", "value": "done", "label": label, "agent": "dex"}
     assert await dev.recv() == {"type": "dismiss", "card_id": "dec-001"}
     entry = _log(harness)[-1]
     assert entry["card_id"] == "dec-001" and entry["action"] == action
@@ -493,7 +493,7 @@ async def test_fixture_money_confirm_is_a_sample_that_charges_nothing(harness: H
     card = reply["card"]
     assert card["id"] == "order-001" and card["kind"] == "notice"
     assert card["body"] == SAMPLE_ORDER_TEXT
-    assert await dev.recv() == {"type": "state", "value": "idle"}
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
     entry = _log(harness)[-1]
     assert (
         entry["outcome"] == "sample_ack" and entry["fixture"] is True and entry["held_ms"] == 2150
@@ -522,7 +522,7 @@ async def test_money_cancel_dismisses(harness: Harness) -> None:
     await _pending(dev)
     await dev.send({"type": "action", "card_id": "order-001", "action": "reject"})
     assert await dev.recv() == {"type": "dismiss", "card_id": "order-001"}
-    assert await dev.recv() == {"type": "state", "value": "idle"}
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
 
 
 async def test_job_action_is_only_logged(harness: Harness) -> None:

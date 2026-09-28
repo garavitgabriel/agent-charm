@@ -6,12 +6,16 @@ question. `HermesChannel` pays that once: at server start it launches `WORKER` t
 path (`ssh <alias> docker exec -i <container> python -u -c …`) and keeps it open. Each question is
 one JSON line in; the answer streams back as JSON lines while Hermes generates it.
 
-The worker is an ordinary process, not a service. It reads `API_SERVER_KEY` from the container's
-`/opt/data/.env` (the key never leaves the VPS), calls the container-local chat completions API
+The worker is an ordinary process, not a service. It reads `API_SERVER_KEY` from an env file inside
+the container (the key never leaves the VPS), calls the container-local chat completions API
 with `stream: true`, and exits when its stdin closes, which happens when the server stops or the
 SSH connection drops. Nothing here changes Hermes config, crons, skills or the charter.
 Provenance: the SSH → docker exec → local API path and the key handling are Margin's
 (`margin/bridge.py`, see agent.py).
+
+One worker per agent, same transport: Dex reads `/opt/data/.env` and calls port 8642; Coach Beard
+(the `coach` profile) reads `/opt/data/profiles/coach/.env` and calls port 8644. The env file and
+port are baked into the worker script (`worker_script`), so nothing but base64 crosses the shell.
 
 Wire (one JSON object per line):
 
@@ -40,14 +44,20 @@ from .agent import AgentError, AgentTimeout, Message
 
 log = logging.getLogger(__name__)
 
+DEX_ENV_FILE = "/opt/data/.env"
+DEX_PORT = 8642
+COACH_ENV_FILE = "/opt/data/profiles/coach/.env"
+COACH_PORT = 8644
+
 # Runs inside the Hermes container. Standard library only (the container's Python). The two
-# CHARM_WORKER_* overrides exist for the local tests; in the container they're unset.
-WORKER = r"""
+# CHARM_WORKER_* overrides exist for the local tests; in the container they're unset. The
+# __ENV_FILE__ / __URL__ / __EMPTY__ placeholders are filled by `worker_script` (as literals).
+WORKER_TEMPLATE = r"""
 import json, os, sys, threading, urllib.error, urllib.request
 from pathlib import Path
 
-ENV_FILE = os.environ.get('CHARM_WORKER_ENV_FILE', '/opt/data/.env')
-URL = os.environ.get('CHARM_WORKER_URL', 'http://127.0.0.1:8642/v1/chat/completions')
+ENV_FILE = os.environ.get('CHARM_WORKER_ENV_FILE', __ENV_FILE__)
+URL = os.environ.get('CHARM_WORKER_URL', __URL__)
 out_lock = threading.Lock()
 cancelled = set()
 
@@ -120,7 +130,7 @@ def chat(request, key):
         if sent:
             emit({'id': rid, 'type': 'done'})
         else:
-            emit({'id': rid, 'type': 'error', 'error': 'Dex sent an empty answer.'})
+            emit({'id': rid, 'type': 'error', 'error': __EMPTY__})
     except urllib.error.HTTPError as exc:
         emit({'id': rid, 'type': 'error', 'error': 'Hermes returned HTTP ' + str(exc.code) + '.'})
     except Exception as exc:
@@ -158,17 +168,37 @@ os._exit(0)  # stdin closed: the channel is gone, so is the worker (daemon threa
 """
 
 
-def worker_bootstrap() -> str:
-    """A `python -c` argument that runs WORKER; base64 keeps the remote shell out of the quoting."""
-    encoded = base64.b64encode(WORKER.encode()).decode()
+def worker_script(env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: str = "Dex") -> str:
+    """The worker for one agent: which env file holds its key, which local port serves it."""
+    url = f"http://127.0.0.1:{int(port)}/v1/chat/completions"
+    return (
+        WORKER_TEMPLATE.replace("__ENV_FILE__", repr(str(env_file)))
+        .replace("__URL__", repr(url))
+        .replace("__EMPTY__", repr(f"{name} sent an empty answer."))
+    )
+
+
+WORKER = worker_script()  # Dex's worker
+
+
+def worker_bootstrap(env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: str = "Dex") -> str:
+    """A `python -c` argument that runs the worker; base64 keeps the remote shell out of quoting."""
+    encoded = base64.b64encode(worker_script(env_file, port, name).encode()).decode()
     return f"import base64;exec(base64.b64decode('{encoded}'))"
 
 
 LOCAL = "local"  # HERMES_SSH_ALIAS=local: the server runs on the Hermes host itself (VPS deploy)
 
 
-def ssh_command(ssh_alias: str, container: str) -> list[str]:
-    worker = ["/opt/hermes/.venv/bin/python", "-u", "-c", worker_bootstrap()]
+def ssh_command(
+    ssh_alias: str,
+    container: str,
+    env_file: str = DEX_ENV_FILE,
+    port: int = DEX_PORT,
+    name: str = "Dex",
+) -> list[str]:
+    bootstrap = worker_bootstrap(env_file, port, name)
+    worker = ["/opt/hermes/.venv/bin/python", "-u", "-c", bootstrap]
     if ssh_alias == LOCAL:
         # Same container-local API and in-container key read; only the SSH hop is gone.
         return ["docker", "exec", "-i", container, *worker]
@@ -184,7 +214,7 @@ def ssh_command(ssh_alias: str, container: str) -> list[str]:
         "-o",
         "ServerAliveCountMax=3",
         ssh_alias,
-        f'docker exec -i {container} /opt/hermes/.venv/bin/python -u -c "{worker_bootstrap()}"',
+        f'docker exec -i {container} /opt/hermes/.venv/bin/python -u -c "{bootstrap}"',
     ]
 
 
@@ -192,7 +222,7 @@ _DROPPED: dict[str, Any] = {"type": "dropped"}
 
 
 class HermesChannel:
-    """Dex over one long-lived worker. Implements `Agent` and `StreamingAgent`.
+    """One Hermes agent (Dex by default) over one long-lived worker. `Agent` + `StreamingAgent`.
 
     - `start()` warms the channel (called at server start); every request also connects on
       demand, so a cold or dropped channel costs one reconnect, never a failed question.
@@ -204,6 +234,7 @@ class HermesChannel:
       worker to stop, and any late lines for that request are dropped.
 
     `command` overrides the SSH command (tests run the worker locally; nothing touches Hermes).
+    `name`, `env_file` and `port` pick the agent: Coach is ("Coach", COACH_ENV_FILE, COACH_PORT).
     """
 
     def __init__(
@@ -215,9 +246,13 @@ class HermesChannel:
         env: dict[str, str] | None = None,
         ready_timeout: float = 30.0,
         backoff: Sequence[float] = (1.0, 2.0, 4.0, 8.0, 15.0, 30.0),
+        name: str = "Dex",
+        env_file: str = DEX_ENV_FILE,
+        port: int = DEX_PORT,
     ) -> None:
+        self.name = name
         self.timeout = timeout
-        self.command = list(command or ssh_command(ssh_alias, container))
+        self.command = list(command or ssh_command(ssh_alias, container, env_file, port, name))
         self.env = env
         self.ready_timeout = ready_timeout
         self.backoff = tuple(backoff)
@@ -251,9 +286,9 @@ class HermesChannel:
         try:
             await self._ensure()
         except AgentError as exc:
-            log.warning("hermes channel warm-up failed: %s (will retry on demand)", exc)
+            log.warning("%s channel warm-up failed: %s (will retry on demand)", self.name, exc)
             return False
-        log.info("hermes channel ready in %.2fs", time.monotonic() - started)
+        log.info("%s channel ready in %.2fs", self.name, time.monotonic() - started)
         return True
 
     async def close(self) -> None:
@@ -278,7 +313,8 @@ class HermesChannel:
                 await asyncio.wait_for(asyncio.shield(self._ready), self.ready_timeout)
             except TimeoutError as exc:
                 await self._kill()
-                raise AgentError("Can't reach Dex right now (the channel didn't open).") from exc
+                unopened = f"Can't reach {self.name} right now (the channel didn't open)."
+                raise AgentError(unopened) from exc
 
     async def _spawn(self) -> None:
         env = {**os.environ, **self.env} if self.env else None
@@ -292,7 +328,7 @@ class HermesChannel:
                 limit=1 << 20,
             )
         except OSError as exc:
-            raise AgentError(f"Can't reach Dex right now ({exc.strerror or exc}).") from exc
+            raise AgentError(f"Can't reach {self.name} right now ({exc.strerror or exc}).") from exc
         self.connects += 1
         self._proc = proc
         self._ready = asyncio.get_running_loop().create_future()
@@ -344,7 +380,9 @@ class HermesChannel:
                         ready.set_result(None)
                 elif kind == "fatal":
                     if not ready.done():
-                        ready.set_exception(AgentError(str(message.get("error", "Dex failed."))))
+                        ready.set_exception(
+                            AgentError(str(message.get("error", f"{self.name} failed.")))
+                        )
                 elif kind == "pong":
                     pass
                 else:
@@ -357,7 +395,9 @@ class HermesChannel:
             if not ready.done():
                 tail = " | ".join(self._stderr_tail)
                 log.warning("hermes channel failed to open (exit %s): %s", proc.returncode, tail)
-                ready.set_exception(AgentError("Can't reach Dex right now (the channel closed)."))
+                ready.set_exception(
+                    AgentError(f"Can't reach {self.name} right now (the channel closed).")
+                )
             if dropped:
                 for queue in self._pending.values():
                     queue.put_nowait(_DROPPED)
@@ -396,17 +436,18 @@ class HermesChannel:
     async def reply(self, messages: list[Message]) -> str:
         text = "".join([piece async for piece in self.stream(messages)]).strip()
         if not text:
-            raise AgentError("Dex sent an empty answer.")
+            raise AgentError(f"{self.name} sent an empty answer.")
         return text
 
     async def stream(self, messages: list[Message]) -> AsyncIterator[str]:
         deadline = time.monotonic() + self.timeout
+        late = f"{self.name} didn't answer within {self.timeout:g} seconds."
         for attempt in range(2):
             remaining = deadline - time.monotonic()
             try:
                 await asyncio.wait_for(self._ensure(), max(0.01, remaining))
             except TimeoutError as exc:
-                raise AgentTimeout("Dex didn't answer within 120 seconds.") from exc
+                raise AgentTimeout(late) from exc
             self._next_id += 1
             rid = self._next_id
             queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
@@ -429,7 +470,7 @@ class HermesChannel:
                     try:
                         message = await asyncio.wait_for(queue.get(), max(0.0, remaining))
                     except TimeoutError as exc:
-                        raise AgentTimeout("Dex didn't answer within 120 seconds.") from exc
+                        raise AgentTimeout(late) from exc
                     kind = message.get("type")
                     if kind == "delta":
                         text = message.get("text")
@@ -441,13 +482,14 @@ class HermesChannel:
                         return
                     elif kind == "error":
                         finished = True
-                        raise AgentError(str(message.get("error") or "Dex could not answer."))
+                        failed = message.get("error") or f"{self.name} could not answer."
+                        raise AgentError(str(failed))
                 finished = True  # dropped: nothing left to cancel on this worker
                 if got_text or attempt:
-                    raise AgentError("The connection to Dex dropped mid-answer.")
+                    raise AgentError(f"The connection to {self.name} dropped mid-answer.")
                 log.warning("hermes channel dropped before the answer; retrying once")
             finally:
                 self._pending.pop(rid, None)
                 if not finished:
                     self._write({"type": "cancel", "id": rid})
-        raise AgentError("The connection to Dex failed.")  # pragma: no cover (loop returns)
+        raise AgentError(f"The connection to {self.name} failed.")  # pragma: no cover

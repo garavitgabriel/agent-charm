@@ -179,7 +179,8 @@ async def test_cancel_during_a_quiet_answer(harness: Harness) -> None:
     await dev.talk(tone(1.0))
     await dev.until(lambda m: m.get("value") == "working")
     await dev.send({"type": "cancel"})
-    assert await dev.recv() == {"type": "state", "value": "idle"}  # no speech_end: none began
+    # no speech_end: none began
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
     assert await dev.silent_for(1.3) == []  # the late answer is dropped
     assert harness.deps.books.turns() == []
 
@@ -277,12 +278,12 @@ async def test_save_in_reading_mode_confirms_after_the_store(harness: Harness) -
         "state:idle",
     ]
     msgs = texts(frames)
-    assert msgs[2] == {"type": "state", "value": "working", "label": "Saving"}
+    assert msgs[2] == {"type": "state", "value": "working", "label": "Saving", "agent": "dex"}
     card = msgs[3]["card"]
     harness.deps.validator.check(card)
     assert card["kind"] == "notice" and card["data"] == {"saved": True, "book": BOOK_JSON}
     assert card["body"] == "“Foxes win because they change their minds.”"
-    assert msgs[4] == {"type": "state", "value": "done", "label": "Saved"}
+    assert msgs[4] == {"type": "state", "value": "done", "label": "Saved", "agent": "dex"}
     (note,) = notes(harness).saved
     assert note.text == "Foxes win because they change their minds."  # verbatim
     assert note.book == Book("Superforecasting", "Philip Tetlock", "3")
