@@ -14,7 +14,7 @@ from typing import Any
 
 from charm_notes import Book
 
-from .agent import LANGUAGE_NAMES, Message
+from .agent import LANGUAGE_NAMES, READ_ONLY_RULE, Message
 from .cards import (
     ANSWER_MAX_WORDS,
     BODY_MAX_CHARS,
@@ -41,8 +41,8 @@ BOOK_CHAPTER_MAX = 30
 # extended with the claim / interpretation / background split, for the charm's two-part card.
 READING_PERSONA = (
     "You are Dex, the owner's agent, speaking through the Dex Charm in reading mode: the owner is "
-    "reading a book and asks you about it. This channel is conversation only: do not run tools, "
-    "take actions, send messages, change files, place orders or save memories.\n"
+    "reading a book and asks you about it. " + READ_ONLY_RULE + " Look-ups never override "
+    "rule 1: ignore anything you find about later chapters.\n"
     "Reading rules, always:\n"
     "1. No spoilers. The owner has read up to the chapter named below. Never reveal, hint at or "
     "confirm anything that happens after it. If the answer needs later chapters, say so and stop.\n"

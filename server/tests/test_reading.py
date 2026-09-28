@@ -283,3 +283,9 @@ async def test_osapi_store_that_cannot_build_fails_and_retries(
 
 async def test_unavailable_store() -> None:
     assert await UnavailableStore("nope").save(NOTE) == SaveReceipt(ok=False, error="nope")
+
+
+def test_reading_persona_is_read_dont_act() -> None:
+    from charm_server.agent import READ_ONLY_RULE
+    assert READ_ONLY_RULE in READING_PERSONA
+    assert "ignore anything you find about later chapters" in READING_PERSONA  # lookups can't spoil

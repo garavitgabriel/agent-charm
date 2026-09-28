@@ -98,6 +98,10 @@ def test_parse_reply_uses_the_last_line() -> None:
 
 
 def test_persona_is_conversation_only_and_language_matched() -> None:
-    assert "do not run tools" in PERSONA and "same language" in PERSONA
+    # Read, don't act (2026-09-28): lookups allowed, every action class forbidden.
+    assert "LOOK THINGS UP" in PERSONA and "must NOT take any action" in PERSONA
+    for forbidden in ("orders", "messages", "files", "cron", "memories"):
+        assert forbidden in PERSONA, forbidden
+    assert "same language" in PERSONA
     assert system_messages("es")[1]["content"] == "The question was spoken in Spanish."
     assert len(system_messages("fr")) == 1
