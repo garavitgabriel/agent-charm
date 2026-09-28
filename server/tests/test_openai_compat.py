@@ -180,7 +180,7 @@ def test_make_agents_unknown_backend(config: Config) -> None:
 
 def test_personas_are_neutral_by_default() -> None:
     for text in (persona_prompt(), coach_persona()):
-        assert "the owner" not in text and "Telegram" not in text
+        assert "'s agent" not in text and "Telegram" not in text
     assert "a personal agent" in persona_prompt()
     assert "your main chat" in persona_prompt()
 
