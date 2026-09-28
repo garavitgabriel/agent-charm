@@ -238,7 +238,7 @@ is alive, not from decoration. **There is no clock anywhere.**
 | Dex placement | hip anchor **(236, 379)**, scale **0.62**, full body, **identical on every screen** |
 
 Accent candidates tested: purple `#B3A6FF`, gold, mint `#9FE3C4`
-(`design/final/accent-compare.png`). **Gold picked by the owner, 2026-09-27.**
+(`internal/design-sprint/accents/accent-compare.png`). **Gold picked by the owner, 2026-09-27.**
 
 ### 11.3 Surfaces (reference PNG → pose)
 

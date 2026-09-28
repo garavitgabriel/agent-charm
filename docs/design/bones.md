@@ -38,7 +38,7 @@ B12. **Money is the loudest screen.** The hold instruction is at headline size n
 B14. **Dex works the active screens.** On Listening, Decision, Money and Done, Dex is part of the
      interaction, not decoration beside it. He holds up the question, carries the bag, becomes the hold
      progress, ticks the box. Test: remove Dex and the screen loses meaning, not just charm.
-     (The owner, r2: "when activating it should leverage what we can".)
+     (the owner, r2: "when activating it should leverage what we can".)
 B13. **Night-safe brightness.** No large white/cream areas. Brightest elements are small, and a dim palette exists for the bedroom.
 
 ## Kill list (v1)
@@ -63,6 +63,6 @@ B13. **Night-safe brightness.** No large white/cream areas. Brightest elements a
 
 ## Keeps
 
-- **The copy voice.** 4/4 critics named words as the keep: "Nothing needs you", headline-first lines ("Light day."), question + stated default ("Pause the side project? / Default: yes, Sunday.").
-- **13-RABK money card.** the owner's keep.
-- **1-CTRL answer card and decision card.** the owner's keeps ("clean", "don't hate it").
+- **The copy voice.** 4/4 critics named words as the keep: "Nothing needs you", headline-first lines ("Light day."), question + stated default ("Pause Side Quest? / Default: yes, Sunday.").
+- **13-RABK money card.** The owner's keep.
+- **1-CTRL answer card and decision card.** The owner's keeps ("clean", "don't hate it").
