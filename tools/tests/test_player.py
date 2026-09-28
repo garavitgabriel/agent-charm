@@ -60,6 +60,7 @@ def test_dex_player_animates(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "0 failure(s)" in proc.stdout
     assert (shots / "idle-f0.png").exists() and (shots / "mini-f1.png").exists()
+    assert (shots / "coach-placeholder.png").exists()
 
 
 @needs_sim
@@ -72,3 +73,5 @@ def test_smooth_dex_player(tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "0 failure(s)" in proc.stdout
     assert (shots / "lift-held.png").exists() and (shots / "reading-idle.png").exists()
+    for name in ("idle", "listening", "working", "speaking", "placeholder"):
+        assert (shots / f"coach-{name}.png").exists(), name

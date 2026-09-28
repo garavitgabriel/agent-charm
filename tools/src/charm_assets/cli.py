@@ -5,14 +5,16 @@ from __future__ import annotations
 import argparse
 import hashlib
 import sys
+from collections.abc import Collection
 from pathlib import Path
 
-from . import cgen, dex_export, dummy, fonts, manifest, palette, smooth, sprites
+from . import cgen, coach, dex_export, dummy, fonts, manifest, palette, smooth, sprites
 
 TOOLS_DIR = Path(__file__).resolve().parents[2]
 REPO_DIR = TOOLS_DIR.parent
 UI_DIR = REPO_DIR / "ui"
 DEX_DIR = UI_DIR / "assets-src/dex"
+COACH_DIR = UI_DIR / "assets-src/coach"
 DESIGN_SRC = REPO_DIR / "docs/design/final/src"
 FIRMWARE_BIN = REPO_DIR / "firmware/.pio/build/charm/firmware.bin"
 
@@ -58,10 +60,19 @@ def cmd_sprites(args: argparse.Namespace) -> int:
         sspec = m.sprites
         sres = smooth.build(sspec)
         frames = f"{len(sres.by_name)} frame PNGs (sha256 {smooth.sources_digest(sspec, sres)})"
-        h, c = smooth.render(sspec, sres, _command("sprites", m), [_source(m.path), frames])
+        sources = [_source(m.path), frames]
+        for other in sspec.others:
+            n = len(sres.characters[other.name].by_name)
+            digest = smooth.sources_digest(sspec, sres, other.name)
+            label = f"{other.name}/{other.path.name}"  # beside Dex's: ui/assets-src/<name>/
+            sha = hashlib.sha256(other.path.read_bytes()).hexdigest()[:16]
+            sources += [f"{label} (sha256 {sha})", f"{n} {other.name} frame PNGs (sha256 {digest})"]
+        h, c = smooth.render(sspec, sres, _command("sprites", m), sources)
         print(
             f"{len(sres.images)} unique frames as LZ4 RGB565, {sres.data_bytes:,} bytes compressed"
         )
+        for name, cb in sres.characters.items():
+            print(f"  {name}: {len(cb.drawn())} pose/outfit animations drawn")
         return _emit(Path(args.out_dir), "charm_assets_sprites", h, c, args.check)
     spec = m.sprites
     result = sprites.build(spec)
@@ -90,6 +101,19 @@ def cmd_fonts(args: argparse.Namespace) -> int:
     return _emit(Path(args.out_dir), "charm_assets_fonts", h, c, args.check)
 
 
+def _report_missing(character: str, table: Collection[tuple[str, str]]) -> None:
+    missing = [
+        f"{p}/{o}" for p in manifest.POSES for o in manifest.OUTFITS if (p, o) not in table
+    ]  # fmt: skip
+    total = len(manifest.POSES) * len(manifest.OUTFITS)
+    if len(missing) == total:
+        print(f"  {character}: no frames, every pose is the gray placeholder")
+    elif missing:
+        print(
+            f"  {character}: gray placeholder for {len(missing)} pose/outfits: {', '.join(missing)}"
+        )
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     m = _load(args.manifest)
     if isinstance(m.sprites, manifest.SmoothSpec):
@@ -98,12 +122,8 @@ def cmd_check(args: argparse.Namespace) -> int:
             f"sprites: rgb565 cell {m.sprites.cell_w}x{m.sprites.cell_h}, never scaled; "
             f"{len(sres.images)} unique frames, {sres.data_bytes:,} bytes LZ4"
         )
-        missing = [
-            f"{p}/{o}" for p in manifest.POSES for o in manifest.OUTFITS
-            if (p, o) not in sres.table
-        ]  # fmt: skip
-        if missing:
-            print(f"  gray placeholder for {len(missing)} pose/outfits: {', '.join(missing)}")
+        for name, cb in sres.characters.items():
+            _report_missing(name, cb.table)
     elif m.sprites:
         spec = m.sprites
         rep = palette.check(spec.palette)
@@ -125,12 +145,8 @@ def cmd_check(args: argparse.Namespace) -> int:
         )
         est = sprites.estimate_full_set(spec)
         print(f"  a full set (9 poses x 6 outfits x 4 frames): ~{est / 1024:,.0f} KiB of flash")
-        missing = [
-            f"{p}/{o}" for p in manifest.POSES for o in manifest.OUTFITS
-            if (p, o) not in result.table
-        ]  # fmt: skip
-        if missing:
-            print(f"  gray placeholder for {len(missing)} pose/outfits: {', '.join(missing)}")
+        for name, table in result.tables.items():
+            _report_missing(name, table)
     if m.fonts:
         for face in m.fonts.faces:
             fonts.check_coverage(face)
@@ -148,6 +164,32 @@ def cmd_export_dex(args: argparse.Namespace) -> int:
     n = len(m["sprites"]["frames"])
     print(f"exported {n} frames + manifest.json to {out}")
     return 0
+
+
+def _compile_with_dex(out: Path, no_compile: bool) -> int:
+    dex = manifest.character_manifest(out / "manifest.json", "dex")
+    if no_compile:
+        print(f"now compile: cd tools && uv run charm-assets sprites {dex}")
+        return 0
+    return cmd_sprites(argparse.Namespace(manifest=str(dex), out_dir=str(UI_DIR), check=False))
+
+
+def cmd_export_coach(args: argparse.Namespace) -> int:
+    out = Path(args.out)
+    m = coach.export(
+        Path(args.src), out, f"cd tools && uv run charm-assets export-coach {args.src}"
+    )
+    n = len(m["sprites"]["frames"])
+    print(f"exported {n} Coach frames + manifest.json to {out}")
+    return _compile_with_dex(out, args.no_compile)
+
+
+def cmd_dummy_coach(args: argparse.Namespace) -> int:
+    out = Path(args.out)
+    m = coach.export_dummy(out)
+    n = len(m["sprites"]["frames"])
+    print(f"wrote {n} dummy Coach test-card frames (NOT Coach) + manifest.json to {out}")
+    return _compile_with_dex(out, args.no_compile)
 
 
 def cmd_budget(args: argparse.Namespace) -> int:
@@ -210,6 +252,17 @@ def main(argv: list[str] | None = None) -> int:
         "--out", default=str(REPO_DIR / "out/dex-strips"), help="default: out/dex-strips"
     )
     sp.set_defaults(fn=cmd_strips)
+    xp = sub.add_parser(
+        "export-coach", help="design renders (<pose>-<n>.png) -> ui/assets-src/coach, then compile"
+    )
+    xp.add_argument("src", help="the folder of Coach renders, one PNG per frame")
+    xp.add_argument("--out", default=str(COACH_DIR), help="default: ui/assets-src/coach")
+    xp.add_argument("--no-compile", action="store_true", help="don't regenerate ui/ afterwards")
+    xp.set_defaults(fn=cmd_export_coach)
+    cq = sub.add_parser("dummy-coach", help="the fake orange/navy Coach test card, then compile")
+    cq.add_argument("--out", default=str(COACH_DIR), help="default: ui/assets-src/coach")
+    cq.add_argument("--no-compile", action="store_true", help="don't regenerate ui/ afterwards")
+    cq.set_defaults(fn=cmd_dummy_coach)
     dp = sub.add_parser("dummy", help="write the dummy test sheet")
     dp.add_argument("--out", default=str(TOOLS_DIR / "fixtures/dummy/dummy-sheet.png"))
     dp.set_defaults(fn=cmd_dummy)

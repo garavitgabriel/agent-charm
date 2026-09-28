@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-# The order of dex_pose_t / dex_outfit_t in ui/dex_sprite.h. tests/test_manifest.py checks that
-# these still match the header.
+# The order of dex_pose_t / dex_outfit_t / dex_character_t in ui/dex_sprite.h.
+# tests/test_manifest.py checks that these still match the header.
 POSES = (
     "idle",
     "listening",
@@ -27,6 +27,8 @@ POSES = (
     "show_phone",
 )
 OUTFITS = ("default", "gameday", "reading", "food", "code", "cat")
+# Who wears the body (protocol `mode.agent`). Same poses, anchor and cell for every character.
+CHARACTERS = ("dex", "coach")
 
 # The boxes ui/dex_sprite.cpp draws Dex into.
 FULL_BOX = (168, 224)
@@ -50,6 +52,7 @@ class Animation:
     outfit: str
     sheet: str
     frames: tuple[Frame, ...]
+    character: str = "dex"
 
 
 @dataclass(frozen=True)
@@ -109,6 +112,18 @@ class SmoothAnimation:
 
 
 @dataclass(frozen=True)
+class SmoothCharacter:
+    """Another character's frames (`ui/assets-src/<character>/manifest.json`, next to Dex's):
+    the same cell and anchor as Dex, Dex's motion timing, its own frames and animations."""
+
+    name: str
+    path: Path
+    outfit_fallback: bool
+    frames: dict[str, SmoothFrame]
+    animations: tuple[SmoothAnimation, ...]
+
+
+@dataclass(frozen=True)
 class Motion:
     tick_ms: int
     breath: dict[str, tuple[int, ...]]  # 6 steps: rest, -1, -2, hold, -1, 0
@@ -135,6 +150,9 @@ class SmoothSpec:
     motion: Motion
     frames: dict[str, SmoothFrame]
     animations: tuple[SmoothAnimation, ...]
+    # The other characters found next to this manifest, in CHARACTERS order. A character with no
+    # manifest has no frames: the player shows the gray placeholder, never Dex.
+    others: tuple[SmoothCharacter, ...] = ()
 
 
 POINTS = ("hand", "bag")  # dex_point_t order in ui/dex_sprite.h
@@ -209,7 +227,7 @@ def _sprites(raw: dict[str, Any], base: Path) -> SpriteSpec:
     sheets = {str(k): (base / str(v)).resolve() for k, v in sorted(sheets_raw.items())}
 
     anims: list[Animation] = []
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str, str]] = set()
     anims_raw = raw.get("animations", [])
     if not isinstance(anims_raw, list):
         raise ManifestError("sprites.animations must be a list")
@@ -218,13 +236,19 @@ def _sprites(raw: dict[str, Any], base: Path) -> SpriteSpec:
         if not isinstance(a, dict):
             raise ManifestError(f"{aw} must be an object")
         pose, outfit = a.get("pose"), a.get("outfit", "default")
+        character = a.get("character", "dex")
+        if character not in CHARACTERS:
+            raise ManifestError(
+                f"{aw}.character {character!r} is not one of {', '.join(CHARACTERS)}"
+            )
         if pose not in POSES:
             raise ManifestError(f"{aw}.pose {pose!r} is not one of {', '.join(POSES)}")
         if outfit not in OUTFITS:
             raise ManifestError(f"{aw}.outfit {outfit!r} is not one of {', '.join(OUTFITS)}")
-        if (pose, outfit) in seen:
-            raise ManifestError(f"{aw}: {pose}/{outfit} is listed twice")
-        seen.add((pose, outfit))
+        if (character, pose, outfit) in seen:
+            who = "" if character == "dex" else f"{character} "
+            raise ManifestError(f"{aw}: {who}{pose}/{outfit} is listed twice")
+        seen.add((character, pose, outfit))
         sheet = str(a.get("sheet", next(iter(sheets))))
         if sheet not in sheets:
             raise ManifestError(f"{aw}.sheet {sheet!r} is not in sprites.sheets")
@@ -244,7 +268,7 @@ def _sprites(raw: dict[str, Any], base: Path) -> SpriteSpec:
                     ms=_int(f, "ms", fw, 16, 60000),
                 )
             )
-        anims.append(Animation(pose, outfit, sheet, tuple(frames)))
+        anims.append(Animation(pose, outfit, sheet, tuple(frames), str(character)))
 
     return SpriteSpec(
         cell_w=cell_w,
@@ -321,31 +345,15 @@ def _frame_refs(
     return tuple(out)
 
 
-def _smooth(raw: dict[str, Any], base: Path) -> SmoothSpec:
-    w = "sprites"
-    cell_w, cell_h = _pair(raw, "cell", w, 1, 1024)
-    ax, ay = _pair(raw, "anchor", w, 0, 1023)
-    if ax >= cell_w or ay >= cell_h:
-        raise ManifestError(f"sprites.anchor {ax},{ay} is outside the cell")
-    sx, sy = _pair(raw, "screen_anchor", w, 0, 1023)
-    mini_x, mini_y = _pair(raw, "mini_origin", w, 0, 1023)
-    if mini_x + MINI_BOX[0] > cell_w or mini_y + MINI_BOX[1] > cell_h:
-        raise ManifestError(
-            f"sprites.mini_origin {mini_x},{mini_y}: the {MINI_BOX[0]}x"
-            f"{MINI_BOX[1]} mini crop leaves the cell"
-        )
-    compression = raw.get("compression", "lz4")
-    if compression not in COMPRESSIONS:
-        raise ManifestError(f"sprites.compression must be one of {', '.join(COMPRESSIONS)}")
-    if "scale" in raw:
-        raise ManifestError('sprites.scale: "rgb565" frames are never scaled; remove it')
-
+def _smooth_frames(
+    raw: dict[str, Any], base: Path, cell_w: int, cell_h: int, w: str
+) -> dict[str, SmoothFrame]:
     frames_raw = raw.get("frames")
     if not isinstance(frames_raw, dict) or not frames_raw:
-        raise ManifestError('sprites.frames must map a frame name to {"file": "x.png"}')
+        raise ManifestError(f'{w}.frames must map a frame name to {{"file": "x.png"}}')
     frames: dict[str, SmoothFrame] = {}
     for name, f in sorted(frames_raw.items()):
-        fw = f"sprites.frames.{name}"
+        fw = f"{w}.frames.{name}"
         if not isinstance(f, dict) or not isinstance(f.get("file"), str):
             raise ManifestError(f'{fw} must be {{"file": "x.png", "points": {{...}}}}')
         pts_raw = f.get("points", {})
@@ -371,14 +379,19 @@ def _smooth(raw: dict[str, Any], base: Path) -> SmoothSpec:
                 )
             points[pname] = (box[0], box[1], box[2], box[3])
         frames[str(name)] = SmoothFrame(str(name), (base / f["file"]).resolve(), points)
+    return frames
 
+
+def _smooth_animations(
+    raw: dict[str, Any], frames: dict[str, SmoothFrame], w: str
+) -> tuple[SmoothAnimation, ...]:
     anims: list[SmoothAnimation] = []
     seen: set[tuple[str, str]] = set()
     anims_raw = raw.get("animations", [])
     if not isinstance(anims_raw, list):
-        raise ManifestError("sprites.animations must be a list")
+        raise ManifestError(f"{w}.animations must be a list")
     for i, a in enumerate(anims_raw):
-        aw = f"sprites.animations[{i}]"
+        aw = f"{w}.animations[{i}]"
         if not isinstance(a, dict):
             raise ManifestError(f"{aw} must be an object")
         pose, outfit = a.get("pose"), a.get("outfit", "default")
@@ -424,7 +437,92 @@ def _smooth(raw: dict[str, Any], base: Path) -> SmoothSpec:
                 str(pose), str(outfit), seq, loop_from, blink, sip, exit_to, exit_clip, str(breath)
             )
         )
+    return tuple(anims)
 
+
+# What a character manifest may say. Everything else (motion, screen anchor, mini crop,
+# compression) is Dex's: one body, one anchor, one motion spec.
+CHARACTER_KEYS = {
+    "format", "character", "cell", "anchor", "outfit_fallback", "frames", "unplayed", "animations",
+}  # fmt: skip
+
+
+def _character(
+    path: Path, name: str, cell: tuple[int, int], anchor: tuple[int, int]
+) -> SmoothCharacter:
+    """Another character's manifest, next to Dex's. It must keep Dex's cell and anchor (the
+    BRIEF § 11.7 character-swap contract)."""
+    w = f"{name} ({path})"
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise ManifestError(f"can't read {name}'s manifest {path}: {e}") from e
+    raw = doc.get("sprites") if isinstance(doc, dict) and doc.get("version") == 1 else None
+    if not isinstance(raw, dict):
+        raise ManifestError(f'{w}: must be {{"version": 1, "sprites": {{...}}}}')
+    if raw.get("format") != "rgb565" or raw.get("character") != name:
+        raise ManifestError(f'{w}: sprites must say "format": "rgb565", "character": "{name}"')
+    extra = sorted(set(raw) - CHARACTER_KEYS)
+    if extra:
+        raise ManifestError(
+            f"{w}: sprites.{extra[0]} comes from Dex's manifest (one motion spec, one anchor); "
+            "remove it"
+        )
+    if _pair(raw, "cell", f"{name}.sprites", 1, 1024) != cell or (
+        _pair(raw, "anchor", f"{name}.sprites", 0, 1023) != anchor
+    ):
+        raise ManifestError(
+            f"{w}: cell and anchor must be Dex's {list(cell)} and {list(anchor)}: every character "
+            "stands on the same anchor in the same cell"
+        )
+    base = path.resolve().parent
+    frames = _smooth_frames(raw, base, cell[0], cell[1], f"{name}.sprites")
+    return SmoothCharacter(
+        name=name,
+        path=path.resolve(),
+        outfit_fallback=bool(raw.get("outfit_fallback", True)),
+        frames=frames,
+        animations=_smooth_animations(raw, frames, f"{name}.sprites"),
+    )
+
+
+def character_manifest(primary: Path, name: str) -> Path:
+    """Where `name`'s manifest sits relative to Dex's: ui/assets-src/<name>/manifest.json."""
+    return primary.resolve().parent.parent / name / "manifest.json"
+
+
+def _smooth(raw: dict[str, Any], base: Path, path: Path) -> SmoothSpec:
+    w = "sprites"
+    if raw.get("character", "dex") != "dex":
+        dex = character_manifest(path, "dex")
+        raise ManifestError(
+            f"{path} is {raw.get('character')!r}'s character manifest: compile it through Dex's "
+            f"{dex}, which picks it up"
+        )
+    cell_w, cell_h = _pair(raw, "cell", w, 1, 1024)
+    ax, ay = _pair(raw, "anchor", w, 0, 1023)
+    if ax >= cell_w or ay >= cell_h:
+        raise ManifestError(f"sprites.anchor {ax},{ay} is outside the cell")
+    sx, sy = _pair(raw, "screen_anchor", w, 0, 1023)
+    mini_x, mini_y = _pair(raw, "mini_origin", w, 0, 1023)
+    if mini_x + MINI_BOX[0] > cell_w or mini_y + MINI_BOX[1] > cell_h:
+        raise ManifestError(
+            f"sprites.mini_origin {mini_x},{mini_y}: the {MINI_BOX[0]}x"
+            f"{MINI_BOX[1]} mini crop leaves the cell"
+        )
+    compression = raw.get("compression", "lz4")
+    if compression not in COMPRESSIONS:
+        raise ManifestError(f"sprites.compression must be one of {', '.join(COMPRESSIONS)}")
+    if "scale" in raw:
+        raise ManifestError('sprites.scale: "rgb565" frames are never scaled; remove it')
+
+    frames = _smooth_frames(raw, base, cell_w, cell_h, w)
+    animations = _smooth_animations(raw, frames, w)
+    others = tuple(
+        _character(p, name, (cell_w, cell_h), (ax, ay))
+        for name in CHARACTERS[1:]
+        if (p := character_manifest(path, name)).exists()
+    )
     return SmoothSpec(
         cell_w=cell_w,
         cell_h=cell_h,
@@ -436,7 +534,8 @@ def _smooth(raw: dict[str, Any], base: Path) -> SmoothSpec:
         outfit_fallback=bool(raw.get("outfit_fallback", True)),
         motion=_motion(raw.get("motion")),
         frames=frames,
-        animations=tuple(anims),
+        animations=animations,
+        others=others,
     )
 
 
@@ -521,7 +620,7 @@ def load(path: Path) -> Manifest:
         sprites=(
             None
             if sprites is None
-            else _smooth(sprites, base)
+            else _smooth(sprites, base, path)
             if sprites.get("format") == "rgb565"
             else _sprites(sprites, base)
         ),

@@ -154,6 +154,21 @@ int main(int argc, char **argv) {
     CHECK(!has_color(FULL_X, FULL_Y, FULL_W, FULL_H, 0x505050));
     CHECK(region_hash(FULL_X, FULL_Y, FULL_W, FULL_H) == idle0);
 
+    // Coach has no frames in the dummy sheet: the gray placeholder, never Dex's frames.
+    dex_set_character(DEX_CHARACTER_COACH);
+    advance(10);
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    CHECK(has_color(FULL_X, FULL_Y, FULL_W, FULL_H, 0x505050));
+    CHECK(!has_color(FULL_X, FULL_Y, FULL_W, FULL_H, 0x00C8B4));
+    shot("coach-placeholder.png");
+    dex_set_character(DEX_CHARACTER_DEX);
+    advance(10);
+    CHECK(region_hash(FULL_X, FULL_Y, FULL_W, FULL_H) == idle0);
+    dex_character_t who = DEX_CHARACTER_DEX;
+    CHECK(dex_character_from_agent("coach", &who) && who == DEX_CHARACTER_COACH);
+    CHECK(!dex_character_from_agent("beard", &who) && who == DEX_CHARACTER_COACH);
+    CHECK(strcmp(dex_character_name(DEX_CHARACTER_COACH), "coach") == 0);
+
     // The public API is unchanged.
     CHECK(dex_get_pose() == DEX_POSE_IDLE && dex_get_size() == DEX_SIZE_FULL);
     CHECK(dex_get_outfit() == DEX_OUTFIT_DEFAULT);
