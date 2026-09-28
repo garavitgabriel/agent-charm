@@ -304,8 +304,12 @@ dex_pose_t compute_pose(CharmSurface s) {
         case CharmSurface::Money:
             return (hold.active || (h && !h->sent_action.empty())) ? DEX_POSE_LIFT_BAG : DEX_POSE_OFFER_BAG;
         case CharmSurface::Answer: return S.speaking ? DEX_POSE_SPEAKING : DEX_POSE_ATTENTION;
-        // Quiet reading: his mouth stays closed; a talking mouth would fake speech.
-        case CharmSurface::ReadingAnswer: return S.speaking ? DEX_POSE_SPEAKING : DEX_POSE_IDLE;
+        // Honest mouth (chief ruling): talking only while speech plays. Quiet, he shows the page
+        // (ATTENTION + reading outfit); once the lead has scrolled away he reads (PAPER).
+        case CharmSurface::ReadingAnswer:
+            if (S.speaking) return DEX_POSE_SPEAKING;
+            return W.column && S.read_offset >= W.detail_top && W.detail_top < W.total ? DEX_POSE_PAPER
+                                                                                     : DEX_POSE_ATTENTION;
         case CharmSurface::Home:
         case CharmSurface::ReadingHome: break;
     }
@@ -845,10 +849,13 @@ void build_done(const HeldCard &h) {
     std::string where = c.store;
     if (!c.address_label.empty()) where += (where.empty() ? "" : " \xC2\xB7 ") + c.address_label;
     if (!where.empty()) line(where, tok::f18r(), tok::FG2, tok::PAD, tok::PAD + 82, tok::LH18, tok::CONTENT_W, 1);
-    // The bag he hands over is full accent.
-    const lv_area_t box = point_or(DEX_POINT_BAG, tok::BAG_DONE);
-    rect(W.over, (lv_coord_t)(box.x1 + 3), (lv_coord_t)(box.y1 + 3), (lv_coord_t)(lv_area_get_width(&box) - 6),
-         (lv_coord_t)(lv_area_get_height(&box) - 6), tok::ACC, 4);
+    // The bag he hands over is full accent, baked into the `done` frames (chief ruling): no overlay.
+    // Placeholder art has no bag, so only then is it drawn here.
+    if (placeholder_art()) {
+        const lv_area_t box = tok::BAG_DONE;
+        rect(W.over, (lv_coord_t)(box.x1 + 3), (lv_coord_t)(box.y1 + 3), (lv_coord_t)(lv_area_get_width(&box) - 6),
+             (lv_coord_t)(lv_area_get_height(&box) - 6), tok::ACC, 4);
+    }
     W.done_bag = true;
 }
 
@@ -1065,6 +1072,7 @@ void update_read_rail() {
     show_if(W.foot2, !in_detail);
     show_if(W.larger, in_detail);
     show_if(W.smaller, in_detail);
+    if (shown == CharmSurface::ReadingAnswer) dex_set_pose(compute_pose(shown));  // lead <-> detail
 }
 
 void set_read_offset(int y) {

@@ -967,7 +967,7 @@ static void test_reading_answer_scroll() {
     CHECK(charm_ui_debug_surface() == CharmSurface::ReadingAnswer);
     CHECK_EQ(charm_ui_debug_scroll(), 0);
     CHECK(charm_ui_debug_scroll_max() > 0);
-    CHECK(dex_get_pose() != DEX_POSE_SPEAKING);  // quiet: no talking mouth
+    CHECK(dex_get_pose() == DEX_POSE_ATTENTION);  // quiet lead: shows the page, mouth closed
     CHECK(ui_button("read_more") != nullptr);
     click(ui_button("read_more"));
     run(400);
@@ -975,6 +975,7 @@ static void test_reading_answer_scroll() {
     CHECK(top > 0);
     CHECK(ui_button("read_more") == nullptr);  // in the detail: the size controls instead
     CHECK(ui_button("larger") != nullptr && ui_button("smaller") != nullptr);
+    CHECK(dex_get_pose() == DEX_POSE_PAPER);  // reading the detail
     CHECK_EQ(charm_ui_debug_read_step(), 1);
     click(ui_button("larger"));
     run(700);
