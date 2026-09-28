@@ -1,5 +1,6 @@
-# Dex Charm server, next to Hermes on <vps>. Deployed at /docker/dex-charm.
-# Tailscale-only (like os-api): the port binds to the VPS's Tailscale IP, never 0.0.0.0.
+# Dex Charm server on a Linux host (a VPS, a home server, a Raspberry Pi 5...).
+# Put this file and a `.env` (see .env.example, chmod 600) in one directory, with the repo in ./src.
+# Compose reads ${VARS} below from that same .env.
 services:
   charm-server:
     build:
@@ -7,18 +8,21 @@ services:
       dockerfile: deploy/vps/Dockerfile
     container_name: dex-charm
     restart: unless-stopped
-    env_file: .env                      # mode 600 on the VPS; never in git (see .env.example)
+    env_file: .env                      # mode 600; never in git (see .env.example)
     environment:
-      CHARM_HOST: 0.0.0.0
+      CHARM_HOST: 0.0.0.0               # inside the container; the host binding is below
       CHARM_PORT: "8765"
-      HERMES_SSH_ALIAS: local           # docker exec into Hermes directly; the API key stays inside Hermes
-      HERMES_CONTAINER: hermes-agent
       CHARM_CARDS_DIR: /app/contract/examples
       CHARM_ACTION_LOG: /app/server/.local/actions.jsonl
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock   # for `docker exec` into Hermes only
-      - ./state:/app/server/.local                  # books.json, actions log: survive redeploys
+      - ./state:/app/server/.local      # books.json, notes, actions log: survive redeploys
+      # Only for CHARM_AGENT=hermes with HERMES_SSH_ALIAS=local (docker exec into the Hermes
+      # container on this same host; its API key never leaves that container). Uncomment it
+      # only then: the Docker socket is root-equivalent.
+      # - /var/run/docker.sock:/var/run/docker.sock
     ports:
-      - "<host-address>:8765:8765"
+      # Bind to a private address, never 0.0.0.0: 127.0.0.1 behind a reverse proxy or
+      # `tailscale serve/funnel`, or your Tailscale/LAN IP for private access.
+      - "${CHARM_BIND:-127.0.0.1}:8765:8765"
     mem_limit: 1536m
     cpus: 1.5

@@ -5,8 +5,8 @@ The hardware layer. It hosts the shared LVGL UI (`../ui`) on the device, so it i
 over Wi-Fi.
 
 **Board: V2 only** (CO5300 display + CST820 touch). V1 (SH8601/FT3168) won't work. Pin map:
-`src/board.h`. Hardware reference and provenance: Margin's `docs/hardware.md`, which lives in
-`margin` and is read-only for this project.
+`src/board.h`, from Waveshare's V2 examples. The bring-up code is ported from Margin, the author's
+earlier (unpublished) reading-companion firmware for this same board.
 
 Plugging the device in for the first time? Work through [`HARDWARE-TEST.md`](HARDWARE-TEST.md).
 
@@ -18,12 +18,12 @@ pio run -e charm      # ESP32-S3 firmware (first run downloads the pioarduino pl
 pio test -e native    # unit tests for the pure logic in lib/charm_core, on the Mac
 ```
 
-- `env:charm` uses Margin's exact platform (pioarduino `55.03.311`, i.e. Arduino-ESP32 3.3.11) and
+- `env:charm` uses the platform verified on this board (pioarduino `55.03.311`, i.e. Arduino-ESP32 3.3.11) and
   its memory settings: 16 MB QIO flash, OPI PSRAM, `default_16MB.csv`, USB CDC on boot.
 - The shared UI is compiled from `../ui/*.cpp` by `scripts/shared_ui.py`, with `-I ../ui` so LVGL
   picks up `../ui/lv_conf.h` (`LV_CONF_INCLUDE_SIMPLE`). Whatever `ui/` holds builds unchanged:
   today that's the skeleton stub, later it's the real UI.
-- Pinned libraries: LVGL `8.3.11` and ArduinoJson `7.4.2` (same as Margin), and
+- Pinned libraries: LVGL `8.3.11` and ArduinoJson `7.4.2` (verified on this board), and
   `links2004/WebSockets` `2.7.3` (see below).
 
 ## Secrets
@@ -41,13 +41,11 @@ warning) using the placeholders, and the device stays offline.
 No device is attached during this build, so nothing here has been flashed yet. When the device
 is plugged in:
 
-1. **Back up the current flash first.** It's running Margin now. Margin's docs say its original
-   factory image is on the **Mac mini** at `margin/.local/backups/original-2026-09-08.bin`
-   (it's private and not copied to other machines; there's a `.sha256` next to it). Still take a fresh
-   full backup of the Margin image before flashing, and keep it **outside any git repo**:
+1. **Back up the current flash first** (the factory demo, or whatever it runs now), and keep the
+   backup **outside any git repo**:
 
    ```sh
-   ls /dev/cu.usbmodem*        # find the port (it was /dev/cu.usbmodem11301 for Margin)
+   ls /dev/cu.usbmodem*        # find the port (macOS; /dev/ttyACM* on Linux)
    mkdir -p ~/charm-backups
    uv tool run --from esptool esptool --port /dev/cu.usbmodemXXXX --baud 921600 \
      read-flash 0 0x1000000 ~/charm-backups/pre-charm-$(date +%F).bin
@@ -64,11 +62,9 @@ is plugged in:
 
    The boot log prints `[charm] touch=1 audio=1 imu=1 pmu=1 psram=8388608` when everything came up.
 
-## Restore Margin or the original image
+## Restore the original image
 
-- **Margin firmware:** `cd margin/firmware && pio run -e margin-v2 -t upload --upload-port /dev/cu.usbmodemXXXX`
-  (this builds from Margin's repo without changing it).
-- **A full image** (the factory backup if it turns up, or the pre-charm backup from step 1):
+- **A full image** (the pre-charm backup from step 1):
 
   ```sh
   uv tool run --from esptool esptool --port /dev/cu.usbmodemXXXX --baud 921600 \
@@ -87,7 +83,7 @@ is plugged in:
 | `src/audio.*` | I2S + ES8311. The mic task keeps the left channel as 16 kHz mono in a PSRAM ring; the speaker task plays the `SpeechPlayer` ring, mono duplicated to stereo. The PA (GPIO46) is HIGH only while playing. |
 | `src/net.*` | Wi-Fi + WebSocket on its own task (the TCP connect can block for 5 s). It sends hello, pings every 10 s, reconnects with backoff (1, 2, 4, 8, 16, then 30 s), and streams mic frames (≤ 4096 bytes). |
 | `src/sensors.*` | QMI8658 accelerometer → face_down/face_up/pickup/shake; AXP2101 battery percent. |
-| `src/es8311*` | Espressif's ES8311 driver, Apache-2.0 headers kept, from Waveshare's V2 `15_ES8311` example (identical to Margin's copy). |
+| `src/es8311*` | Espressif's ES8311 driver, Apache-2.0 headers kept, from Waveshare's V2 `15_ES8311` example (the same copy Margin used). |
 | `lib/charm_core/` | Pure logic with no Arduino: frame building, message peek, ring buffer, speech player, button debounce, backoff, keepalive, talk limit, mic level, motion, battery reporting. Covered by `test/`. |
 | `lib/waveshare-gfx/` | Waveshare's Arduino_GFX copy with the CO5300 driver. See its `PROVENANCE.md`. |
 | `lib/SensorLib/`, `lib/XPowersLib/` | QMI8658 and AXP2101 drivers from Waveshare's repo at the pinned commit. See each `PROVENANCE.md`. |
@@ -137,19 +133,20 @@ the screen facing up depends on how the IMU is mounted, so it's `face_up_z_sign`
   first wins and only one `audio_end` is sent.
 - Wi-Fi modem sleep is off (`WiFi.setSleep(false)`) for steady audio streaming. That costs
   battery; revisit once power matters.
-- `ws://` only. `wss://` for the VPS needs certificates configured; not done in v0.
+- `ws://` only. (Superseded: `wss://` is supported, see below.)
 
-## Connecting to the VPS (public, encrypted), added 2026-09-28
+## Connecting to a public server (encrypted)
 
-The charm server runs on the Hermes VPS. Its public address is a Tailscale Funnel on port 8443,
-path `/charm` only: `wss://<machine>.<tailnet>.ts.net:8443/charm`. In `src/secrets.h`:
+When the server runs on a host with a public TLS endpoint (a Tailscale Funnel or any reverse proxy
+with a Let's Encrypt certificate; see [`deploy/vps/README.md`](../deploy/vps/README.md)), point the
+charm at it in `src/secrets.h`:
 
 ```c
-#define CHARM_SERVER_HOST "<machine>.<tailnet>.ts.net"
-#define CHARM_SERVER_PORT 8443
+#define CHARM_SERVER_HOST "<machine>.<tailnet>.ts.net"   // or charm.example.com
+#define CHARM_SERVER_PORT 8443                           // 443 behind a normal reverse proxy
 #define CHARM_SERVER_PATH "/charm"
 #define CHARM_SERVER_TLS 1   // verified against the Let's Encrypt roots in src/ca_roots.h
-#define CHARM_TOKEN "..."    // = CHARM_TOKEN in /docker/dex-charm/.env on the VPS
+#define CHARM_TOKEN "..."    // = CHARM_TOKEN in the server's .env
 ```
 
 TLS adds about 700 KB of flash and 23 KB of RAM (42 % flash, 49 % RAM in total). A wrong token gets

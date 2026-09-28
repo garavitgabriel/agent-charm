@@ -1,10 +1,12 @@
-# Dex Charm server for the Hermes VPS. Build context: the repo root (server/, notes/, contract/).
+# Dex Charm server. Build context: the repo root (server/, notes/, contract/).
 FROM python:3.12-slim
 
+# The Docker CLI is only used by CHARM_AGENT=hermes (docker exec into a Hermes container).
 ARG DOCKER_CLI_VERSION=27.3.1
+ARG DOCKER_ARCH=x86_64
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates \
- && curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_CLI_VERSION}.tgz" \
+ && curl -fsSL "https://download.docker.com/linux/static/stable/${DOCKER_ARCH}/docker-${DOCKER_CLI_VERSION}.tgz" \
     | tar -xz --strip-components=1 -C /usr/local/bin docker/docker \
  && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* \
  && pip install --no-cache-dir uv==0.12.1

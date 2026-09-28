@@ -1,6 +1,6 @@
 # Hardware test: first plug-in of Dex Charm
 
-For the owner, with the device on the desk. The firmware was only compiled and unit-tested when it
+For whoever has the device on the desk. The firmware was only compiled and unit-tested when it
 was written. Nothing had run on the board yet, so **this checklist is where it's proven**. Work
 top to bottom. Each check says what to do and what proves it passed. Note anything that fails,
 with the serial log.
@@ -38,4 +38,4 @@ with the serial log.
 **If a chip is missing** (`imu=0` or `pmu=0` in check 1), the rest still works and that chip's
 events simply never appear. Report the log line.
 
-**After testing:** to go back to Margin, see `README.md` → Restore.
+**After testing:** to go back to the previous firmware, see `README.md` → Restore.
