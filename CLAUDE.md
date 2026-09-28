@@ -21,6 +21,12 @@ with the design owner. Rulings so far:
   Dex for the rest."). It never says "Full version in Telegram" unless something was actually sent
   there.
 - The Listening "fuse" runs for the listen limit, **25 s** (the firmware and UI limit), not 30 s.
+- **Sprite cell is 192×224** (not the 192×192 in BRIEF § 11.7). At scale 0.62 Dex spans the hip
+  −161 px (bag overhead) to +62 px (ground shadow). The cell covers screen x 160..351, y 218..441.
+- **Honest mouth.** `DEX_POSE_SPEAKING` (talking mouth) only while speech audio plays. The quiet
+  reading lead is `DEX_POSE_ATTENTION`, and the reading detail is `DEX_POSE_PAPER`.
+- **Money Done** frames bake a full gold bag. The LVGL bag-fill overlay is for `LIFT_BAG` (mid-hold)
+  only.
 
 ## Layout and ownership
 
