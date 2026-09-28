@@ -1,6 +1,6 @@
 """`OsApiStore`: a `NoteStore` that writes to the vault inbox through the OS knowledge service.
 
-The service (`gabe-os-service`) answers `POST {base}/submit` with `{"ok": true, "path": ...}` and
+The service answers `POST {base}/submit` with `{"ok": true, "path": ...}` and
 writes a *new* file under `inbox/` every time, so this store never retries: a retry
 after a lost reply could duplicate the note. `ok=True` only when the service returned 2xx **and** a
 path. The token never appears in logs, errors, receipts or reprs.

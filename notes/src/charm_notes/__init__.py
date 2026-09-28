@@ -22,7 +22,7 @@ class Book:
 
 @dataclass(frozen=True)
 class Note:
-    text: str  # the owner's exact words, never paraphrased
+    text: str  # the speaker's exact words, never paraphrased
     captured_at: datetime  # timezone-aware
     language: str  # "en" | "es" | ...
     book: Book | None = None
