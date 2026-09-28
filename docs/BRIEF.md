@@ -357,6 +357,50 @@ a UI redesign if it meets all of these:
 Cost of a swap: one pose-sheet render and a new sprite export. Tokens, layouts and motion are
 unchanged.
 
+### 11.9 Coach Beard (rendered 2026-09-28)
+
+The source of truth is [`design/final/coach/coach.md`](design/final/coach/coach.md). The poses are
+code in `design/final/coach/src/` (`coach.py` imports `dex.py` read-only; `build_coach.py` renders
+everything). Coach is the second character on the same body, under the § 11.7 contract. Tokens,
+layout, motion, separator, anchor and the gold accent don't change. There's no name label: the
+character is the cue.
+
+- **Look:** an orange pom beanie with a navy cuff, a black headset with a boom mic, a full brown
+  beard, and a steel whistle on a cord. An orange jacket with navy collar/hood, hem and sleeve
+  bands, over a white/grey long sleeve. Brown trousers and dark shoes. His props are a spiral
+  calendar with one date circled and a tablet showing a play ("watching film"). Night is
+  `dex.dim_pal`.
+- **Accent (rule 5):** the jacket is burnt orange **`#E07A45 / #C8551E / #9A3F14`**, chosen from
+  four candidates (`accent-compare.png`). It's ΔE00 34.6 from the gold and 30 L* darker; the
+  reference orange `#E8742C` (ΔE 26) collided. The circled date uses his orange, never gold.
+  Rust `#A84E2E` is the device fallback.
+- **Poses** (the `dex_sprite.h` names; 20 frames in `coach/frames/`, `<pose>-<n>.png`, 192×224
+  cells on `#000`, hip (236,379), scale 0.62):
+  - idle 3 (the whistle swings);
+  - listening 2 (hand to headset);
+  - working 2 (tablet);
+  - speaking 2;
+  - attention 1 (calendar at chest);
+  - done 4 (thumbs-up, whistle in teeth, nod);
+  - ask_yes 1 (calendar held up high, circled date toward you);
+  - asleep 3 (seated, beanie down, night);
+  - offline 1 (taps the dead headset);
+  - error 1 (shrug).
+
+  He has no money, tracker, paper or show-phone poses; those stay on the gray placeholder.
+  The blink pairs and the idle glance are in `coach/frames-extra/`, because `export-coach` can't
+  take them yet (coach.md § Open).
+- **Surfaces:**
+  - `c0-home.png`: idle, "Nothing needs you".
+  - `c1-on-it.png`: "Coach is on it" (32) + "You can put it down." (18). No Cancel; it's a
+    walk-away job.
+  - `c2-call.png`: the Decision layout. The verdict "Start Purdy" (32), the deadline "Sun 12:00"
+    (18) and the flip condition "Flip only if Purdy is out before Sun 12:00" (18, FG2). Actions:
+    **Hear it** (the gold pill) / Why? / Later.
+  - `c3-night.png`: asleep, dim tokens, no text.
+
+  All four pass § 11.6 (coach.md has the table).
+
 ## Sources
 
 - Meta Muse Charm coverage: TechCrunch 2026-09-23 and 2026-09-24; Meta Connect 2026 recap blog; Irish
