@@ -7,10 +7,14 @@ import hashlib
 import sys
 from pathlib import Path
 
-from . import cgen, dummy, fonts, manifest, palette, sprites
+from . import cgen, dex_export, dummy, fonts, manifest, palette, smooth, sprites
 
 TOOLS_DIR = Path(__file__).resolve().parents[2]
-UI_DIR = TOOLS_DIR.parent / "ui"
+REPO_DIR = TOOLS_DIR.parent
+UI_DIR = REPO_DIR / "ui"
+DEX_DIR = UI_DIR / "assets-src/dex"
+DESIGN_SRC = REPO_DIR / "docs/design/final/src"
+FIRMWARE_BIN = REPO_DIR / "firmware/.pio/build/charm/firmware.bin"
 
 
 def _source(path: Path) -> str:
@@ -40,10 +44,25 @@ def _command(verb: str, m: manifest.Manifest) -> str:
     return f"{verb} {cgen.rel_to_tools(m.path, TOOLS_DIR)}"
 
 
+def _smooth(m: manifest.Manifest) -> manifest.SmoothSpec:
+    if not isinstance(m.sprites, manifest.SmoothSpec):
+        raise manifest.ManifestError('this needs a "format": "rgb565" sprites manifest')
+    return m.sprites
+
+
 def cmd_sprites(args: argparse.Namespace) -> int:
     m = _load(args.manifest)
     if m.sprites is None:
         raise manifest.ManifestError("the manifest has no sprites section")
+    if isinstance(m.sprites, manifest.SmoothSpec):
+        sspec = m.sprites
+        sres = smooth.build(sspec)
+        frames = f"{len(sres.by_name)} frame PNGs (sha256 {smooth.sources_digest(sspec, sres)})"
+        h, c = smooth.render(sspec, sres, _command("sprites", m), [_source(m.path), frames])
+        print(
+            f"{len(sres.images)} unique frames as LZ4 RGB565, {sres.data_bytes:,} bytes compressed"
+        )
+        return _emit(Path(args.out_dir), "charm_assets_sprites", h, c, args.check)
     spec = m.sprites
     result = sprites.build(spec)
     for w in result.warnings:
@@ -73,7 +92,19 @@ def cmd_fonts(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     m = _load(args.manifest)
-    if m.sprites:
+    if isinstance(m.sprites, manifest.SmoothSpec):
+        sres = smooth.build(m.sprites)
+        print(
+            f"sprites: rgb565 cell {m.sprites.cell_w}x{m.sprites.cell_h}, never scaled; "
+            f"{len(sres.images)} unique frames, {sres.data_bytes:,} bytes LZ4"
+        )
+        missing = [
+            f"{p}/{o}" for p in manifest.POSES for o in manifest.OUTFITS
+            if (p, o) not in sres.table
+        ]  # fmt: skip
+        if missing:
+            print(f"  gray placeholder for {len(missing)} pose/outfits: {', '.join(missing)}")
+    elif m.sprites:
         spec = m.sprites
         rep = palette.check(spec.palette)
         print(f"palette: {len(spec.palette)} colors, worst RGB565 shift {rep.max_error}/255")
@@ -111,6 +142,31 @@ def cmd_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_dex(args: argparse.Namespace) -> int:
+    out = Path(args.out)
+    m = dex_export.export(Path(args.design_src), out)
+    n = len(m["sprites"]["frames"])
+    print(f"exported {n} frames + manifest.json to {out}")
+    return 0
+
+
+def cmd_budget(args: argparse.Namespace) -> int:
+    m = _load(args.manifest)
+    spec = _smooth(m)
+    fw = Path(args.firmware_bin) if args.firmware_bin else None
+    for line in smooth.budget(spec, smooth.build(spec), fw):
+        print(line)
+    return 0
+
+
+def cmd_strips(args: argparse.Namespace) -> int:
+    m = _load(args.manifest)
+    spec = _smooth(m)
+    paths = smooth.strips(spec, smooth.build(spec), Path(args.out))
+    print(f"wrote {len(paths)} strips to {args.out}")
+    return 0
+
+
 def cmd_dummy(args: argparse.Namespace) -> int:
     path = Path(args.out)
     dummy.write_sheet(path)
@@ -138,6 +194,22 @@ def main(argv: list[str] | None = None) -> int:
     cp = sub.add_parser("check", help="validate a manifest; palette + flash report")
     cp.add_argument("manifest")
     cp.set_defaults(fn=cmd_check)
+    ep = sub.add_parser("export-dex", help="render the smooth Dex from the design source")
+    ep.add_argument("--design-src", default=str(DESIGN_SRC), help="default: docs/design/final/src")
+    ep.add_argument("--out", default=str(DEX_DIR), help="default: ui/assets-src/dex")
+    ep.set_defaults(fn=cmd_export_dex)
+    bp = sub.add_parser("budget", help="rgb565 sprites: raw/RLE/LZ4 per pose vs the app partition")
+    bp.add_argument("manifest")
+    bp.add_argument(
+        "--firmware-bin", default=str(FIRMWARE_BIN), help="default: firmware/.pio/.../firmware.bin"
+    )
+    bp.set_defaults(fn=cmd_budget)
+    sp = sub.add_parser("strips", help="rgb565 sprites: one PNG strip per pose for review")
+    sp.add_argument("manifest")
+    sp.add_argument(
+        "--out", default=str(REPO_DIR / "out/dex-strips"), help="default: out/dex-strips"
+    )
+    sp.set_defaults(fn=cmd_strips)
     dp = sub.add_parser("dummy", help="write the dummy test sheet")
     dp.add_argument("--out", default=str(TOOLS_DIR / "fixtures/dummy/dummy-sheet.png"))
     dp.set_defaults(fn=cmd_dummy)

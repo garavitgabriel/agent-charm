@@ -10,6 +10,9 @@ TOOLS = Path(__file__).resolve().parents[1]
 REPO = TOOLS.parent
 UI = REPO / "ui"
 DUMMY_MANIFEST = TOOLS / "fixtures/dummy/manifest.json"
+DEX_DIR = REPO / "ui/assets-src/dex"
+DEX_MANIFEST = DEX_DIR / "manifest.json"
+DESIGN_SRC = REPO / "docs/design/final/src"
 
 
 @pytest.fixture

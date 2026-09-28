@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 # Pinned exactly, like server/. uv.lock pins the transitive set.
 dependencies = [
+    "lz4==4.4.5",
     "pillow==11.3.0",
+    "resvg-py==0.5.0",
 ]
 
 [project.scripts]
@@ -37,6 +39,10 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 python_version = "3.12"
 strict = true
 mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = ["lz4", "lz4.*"]  # no stubs; used through two typed wrappers in smooth.py
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
