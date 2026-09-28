@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 dependencies = []
 
+[project.scripts]
+charm-notes = "charm_notes.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
