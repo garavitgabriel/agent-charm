@@ -5,9 +5,12 @@ firmware and the Mac simulator compile unchanged (both builds glob `ui/*.cpp`):
 
 | Command | Writes |
 |---|---|
-| `uv run charm-assets sprites MANIFEST` | `ui/charm_assets_sprites.{h,cpp}`: LVGL 8.3 `lv_img_dsc_t` frames + the pose × outfit frame table |
+| `uv run charm-assets export-dex` | `ui/assets-src/dex/`: the smooth Dex rendered from the design source, one PNG per frame + `manifest.json` |
+| `uv run charm-assets sprites MANIFEST` | `ui/charm_assets_sprites.{h,cpp}`: the frames + the pose × outfit table (smooth LZ4 RGB565, or indexed pixel art) |
 | `uv run charm-assets fonts MANIFEST` | `ui/charm_assets_fonts.{h,cpp}`: `lv_font_t` per face × size, through `lv_font_conv` |
 | `uv run charm-assets check MANIFEST` | nothing: validates, prints the RGB565 palette report, flash sizes and the poses still on the gray placeholder |
+| `uv run charm-assets budget MANIFEST` | nothing: raw / RLE16 / LZ4 bytes per pose vs the 6.25 MiB app partition and the built firmware |
+| `uv run charm-assets strips MANIFEST` | `out/dex-strips/<pose>-<outfit>.png`: every frame side by side, decoded from the generated LZ4, points outlined |
 | `uv run charm-assets dummy` | `fixtures/dummy/dummy-sheet.png`, the fake test sheet |
 
 Add `--check` to `sprites`/`fonts` to fail (exit 1) when the committed files are stale. Output is
@@ -24,9 +27,90 @@ uv run ruff check . && uv run mypy src && uv run pytest -q
 Then rebuild: `cmake --build build/sim && ./build/sim/charm-sim --shots out/shots`, and
 `cd firmware && pio run -e charm`.
 
-## Design handoff: what to export
+## The smooth Dex (the real art)
 
-The real art drops in with **one manifest and one command** per output. Export this layout:
+Dex is a smooth illustrated character (BRIEF § 11). **The poses are code**, in
+`docs/design/final/src/{dex,sheet,build}.py` plus the reading mode's
+`docs/design/final/reading/src/build_reading.py`, so nobody exports frames by hand.
+
+### Re-export after a pose tweak (design session)
+
+```sh
+cd tools
+uv run charm-assets export-dex                                   # docs/design -> ui/assets-src/dex
+uv run charm-assets sprites ../ui/assets-src/dex/manifest.json  # -> ui/charm_assets_sprites.*
+uv run charm-assets budget ../ui/assets-src/dex/manifest.json   # sizes vs the flash budget
+uv run charm-assets strips ../ui/assets-src/dex/manifest.json   # -> out/dex-strips/ for review
+uv run ruff check . && uv run mypy src && uv run pytest -q
+```
+
+Then rebuild the sim and the firmware (see above). `export-dex` imports the design modules
+read-only: it writes no bytecode or file next to them. It renders with resvg (`resvg-py`, pinned),
+which matches the Chrome-rendered reference PNGs, and it's deterministic. `pytest` checks that a
+fresh export reproduces the committed frames byte for byte.
+
+**What `export-dex` does.** `tools/src/charm_assets/dex_export.py` (`frame_set()`) lists every frame:
+
+- It calls each design pose function with `figure()` swapped for a recorder. That captures the pose's
+  parameters, and the props (`mug`, `takeout_fill`, `note_card`) remember their arguments.
+- Motion frames that the design describes but doesn't draw are that same call with one design
+  parameter changed:
+  - blinks: `eyes="down"` for half, `"blink"` for closed;
+  - steam: the mug's `lean`;
+  - head bob and nod: `head_dy`;
+  - toe-tap: `shoeR`;
+  - speaking mouth: `mouth="o"`.
+- The lift in-betweens interpolate `pose_offer_bag` → `pose_lift` at ⅓ and ⅔.
+- Every such choice is listed in `EXPORT_NOTES`, which ends up in the manifest's `_notes`.
+- To add or retime a frame, edit `frame_set()` and re-run. To change how Dex looks, edit the design
+  source and re-run. Never edit the PNGs or `manifest.json` by hand.
+
+### Format and geometry
+
+| | |
+|---|---|
+| Pixels | Opaque RGB565 (little-endian, `LV_COLOR_16_SWAP 0`), pre-composited on `#000`, with Dex's ground shadow baked in. No alpha: every screen is true black behind Dex. |
+| Cell | **192 × 224**, top-left on screen at (160, 218). The width is the designed 192 px; the height is 224 because Dex is ~211 px tall, plus the shadow and the lifted bag. A 192-px-tall cell would crop him. The export fails if any pixel of any frame lands outside the cell. |
+| Anchor | The hip is cell (76, 161), which lands on screen (236, 379). Scale 0.62 is baked in. **Dex is never scaled**, and the player never moves the anchor. |
+| Compression | One LZ4 block per frame (lz4 HC 12). `budget` measures a 16-bit RLE on the same frames: LZ4 comes out ~40% smaller (anti-aliased edges make runs short), and it decodes at memcpy speed. Identical frames are stored once. |
+| Player | `ui/dex_sprite.cpp` decodes the current frame into **one** 86,016 B buffer (PSRAM on the device), shown as an unscaled `LV_IMG_CF_TRUE_COLOR` image. Each frame carries a FNV-1a hash, and `player_check/check_dex_smooth.cpp` compares it with the framebuffer. |
+| Points | Each frame carries `hand` (the right hand: it cups your voice, holds the sign, lifts the bag) and `bag` (the takeout bag's body, the clip the hold fills bottom → top). Both are computed from the design geometry, and `dex_get_point_area()` returns them on screen, breathing offset included. |
+| Mini | `DEX_SIZE_MINI` (main's cards; the final UI never uses it) is an unscaled 76 × 76 head crop in the corner, from `mini_origin`. It has no points. |
+
+### Motion (`motion` in the manifest, from `docs/design/final/motion.md`)
+
+Each animation has:
+- `frames` (per-frame `ms`) with `loop_from` (a single last frame holds: the done nod plays once);
+- optional per-frame `blink` variants `[half, closed]`;
+- an optional `sip` clip (idle: every 20–40 s);
+- an optional `exit` clip that plays when the pose changes to `exit.to` (`lift_bag` → `offer_bag`
+  goes back through the in-betweens in 200 ms);
+- a `breath` of `day` (4.0 s: 1600 / 200 / 200 / 1600 / 200 / 200 ms at 0 / −1 / −2 / −2 / −1 / 0 px),
+  `night` (6.0 s) or `none` (the lift, which bobs instead).
+
+Blinks come every 3–6 s, never while inhaling, and every 5th is double (150 ms gap). The player's
+random numbers use a fixed seed, so the sim's shots are reproducible.
+
+### Outfits
+
+`reading` is drawn from `build_reading.py`:
+
+| Pose | Reading frames | Design screen |
+|---|---|---|
+| `idle` | book-hug | R1 |
+| `speaking` | show-page, talking | R2, voice on |
+| `attention` | show-page, mouth closed | R2, quiet: a card is up and nothing is spoken |
+| `paper` | read | R3 / R5 |
+| `done` | tuck, note sinking in, once | R6 |
+
+Every other pose/outfit borrows the default frames (`outfit_fallback`). R4's shh and crier are
+exported for review but not compiled, because no `dex_pose_t` plays them. Night reading isn't
+exported. A pose with no frames still falls back to the gray placeholder.
+
+## Pixel-art sheets (indexed; the dummy fixture)
+
+The indexed pipeline below still works: `fixtures/dummy/` uses it, and the player picks the mode
+from the generated header. Export this layout:
 
 ```
 tools/art/
@@ -141,10 +225,21 @@ The fonts are **generated but not used yet.** Wiring them into the cards means e
 `ui/charm_ui.cpp`/`ui/ui_card.cpp`, outside this pipeline's files. Until then the linker drops
 them from the firmware.
 
-**Player check.** `player_check/check_dex_player.cpp` links the real `ui/dex_sprite.cpp` against
-the sim's built libraries. It checks that the frames change on their `ms`, loop, and scale to full
-and mini, and that a pose with no art falls back to the gray box. `tests/test_player.py` builds and
-runs it, and is skipped until `build/sim` exists.
+**Player checks.** `tests/test_player.py` builds two programs against the sim's libraries and runs
+them. Both tests are skipped until `build/sim` exists.
+
+- `player_check/check_dex_player.cpp` runs the real `ui/dex_sprite.cpp` on the dummy table, which is
+  generated into a temp dir. It checks that frames change on their `ms`, loop, and scale to full and
+  mini, and that a pose with no art falls back to the gray box.
+- `player_check/check_dex_smooth.cpp` runs it on the committed smooth table. It checks that:
+  - every sampled frame is bit-exact on the framebuffer at the anchor, unscaled;
+  - frames loop from `loop_from`;
+  - breathing moves the whole sprite by −1 / −2 px, and the points follow;
+  - blinks come 3–6 s apart, with doubles, and the sip plays;
+  - the lift and its exit clip play as specified;
+  - the bag goes from chest to overhead;
+  - the reading outfit shows its own frames;
+  - mini works.
 
 ## Fonts and licenses
 
