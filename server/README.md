@@ -27,6 +27,9 @@ uv run charm-client --edition                 # the pocket edition, in section o
 uv run charm-client --pending                 # decision / money / tracker / job / notice cards
 uv run charm-client --action order-001:confirm --held-ms 2100   # hold-to-confirm (sample)
 uv run charm-client --action dec-001:approve
+uv run charm-client --say "I'm reading Superforecasting by Philip Tetlock, chapter 3"
+uv run charm-client --setting speech=on --say "What does the author mean by foxes?"
+uv run charm-client --setting mode=default    # leave reading from the device side
 ```
 
 `charm-server --host 0.0.0.0` exposes it on the LAN for the real device. `-v` turns on debug logs.
@@ -51,6 +54,8 @@ The real environment wins over `server/.env`. See [`.env.example`](.env.example)
 | `CHARM_TZ` | `America/Chicago` | `welcome.tz` and card timestamps |
 | `CHARM_VOICE_EN` / `CHARM_VOICE_ES` | `en-US-AndrewNeural` / `es-CO-GonzaloNeural` | Edge voices by detected language (anything else falls back to English) |
 | `CHARM_WHISPER_MODEL` | `base` | faster-whisper model |
+| `CHARM_BOOKS` | `.local/books.json` | The reading session: current book, chapter, the last 8 Q&A per book, the speech toggle (gitignored) |
+| `CHARM_NOTES` | `osapi` | Where "save this" goes. `osapi`: the OS knowledge service (`charm_notes.osapi.OsApiStore`, inbox only). `fake`: in memory, for tests and live checks. `off`: saving disabled |
 
 Relative paths are resolved from `server/`.
 
@@ -65,7 +70,11 @@ device ──ws /charm──▶ server.py      auth (hello + token → welcome, 
                         │  ├─ hermes.py  HermesChannel: one long-lived worker in the container, streamed answers
                         │  ├─ agent.py   Agent / StreamingAgent protocols · HermesAgent (ssh per question)
                         │  ├─ tts.py     TTS protocol · EdgeTTS (MP3 → ffmpeg → 16 kHz s16le, streamed)
-                        │  └─ cards.py   schema validation, edition/pending loading, reply → say + card
+                        │  ├─ cards.py   schema validation, edition/pending loading, reply → say + card
+                        │  ├─ intents.py rule-based EN/ES intents: enter/leave reading, chapter, save, speech
+                        │  ├─ books.py   the per-book reading session (.local/books.json)
+                        │  ├─ reading.py reading persona, lead + detail card, saved / not-saved notices
+                        │  └─ notestore.py  CHARM_NOTES → a charm_notes NoteStore (osapi lazily, fake, off)
                         ▼
                       protocol.py    wire constants, state/error builders, 8192/4096-byte limits
 ```
@@ -164,6 +173,55 @@ reads `API_SERVER_KEY` from the container's `/opt/data/.env` and POSTs to the co
 conversation only (no tools, actions, messages, orders or memories), plain text, at most 60 words,
 and a reply in the question's language. A system note also names the detected language. Nothing
 here changes Hermes config, crons, skills or the charter.
+
+## Reading mode
+
+Margin's reading companion is a mode of the charm ([`PROTOCOL.md` § Reading mode](../docs/PROTOCOL.md)).
+
+**Intents are rules, not a model call** (`intents.py`, EN + ES). They're checked on the final
+transcript before anything goes to Dex, and only whole-utterance commands count; anything else is a
+question:
+
+| Say | Does |
+|---|---|
+| "I'm reading *Superforecasting* by Philip Tetlock, chapter 3" / "Estoy leyendo *Cien años de soledad*, capítulo 3" | Reading mode for that book: `mode{reading, book}` + `setting{speech:"off"}` |
+| "I'm on chapter 4" / "Voy en el capítulo 4" (reading mode only) | Updates the chapter: `mode{reading, book}` |
+| "Stop reading" / "Deja de leer" | Back to default: `mode{default}` + `setting{speech:"on"}` |
+| "Save this: …" / "Guarda esto: …" | Saves the words after the trigger, **verbatim**, with the book and chapter when reading |
+| "Voice on" / "Be quiet" / "Activa la voz" / "Silencio" | `setting{speech}` |
+
+A statement with a question in it ("I'm reading X, what does Y mean?") stays a question. The
+device can also send `setting{name:"speech"|"mode"}`. The server honors it and echoes the
+*effective* value (`mode:"reading"` with no book on record echoes `default`).
+
+**The per-book session** (`books.py`, `CHARM_BOOKS`) is one JSON file shared by every connection.
+It keeps the current book and chapter, the last 8 Q&A per book, and the speech toggle. It
+survives reconnects and restarts, and on connect the server re-sends `mode` + `setting{speech}`
+when reading is active. Switching books switches context: each book has its own chapter and turns.
+
+**Reading answers** use Margin's rules (`reading.py`): no spoilers past the chapter, no invented
+quotes or page numbers, ask for the passage, and keep the author's claim, interpretation and
+background apart. The prompt carries this book's turns, not the connection's. Dex answers with a
+lead, a blank line, then the detail. The card gets `body` (the lead, ≤ 60 words; a longer lead
+spills into the detail), `detail` (≤ 1600 chars), `data.book`, and a "Title · ch 3" footer (or
+"Shortened. Ask Dex for the rest." if the detail had to be clipped).
+
+**Speech.** Reading defaults to quiet: no `speech_start`/`speech_end`, just
+`working → card → idle`. With voice on, only the lead is spoken (`LeadSplitter` stops at the first
+paragraph break). "Be quiet" works outside reading too.
+
+**Save this thought.** A save never goes to Dex:
+
+```
+ok:     state{working,label:"Saving"} → card{notice, data:{saved:true, book?}} → state{done,label:"Saved"} → state{idle}
+failed: state{working,label:"Saving"} → error{save_failed} → card{notice, data:{saved:false}} → state{idle}
+```
+
+`state{done}` happens only on a `SaveReceipt` whose `ok` is exactly `True`. A crash, a timeout
+(30 s backstop), an empty "save this" or an unknown backend are all `save_failed`, with the reason
+on the notice. There's no queue and no retry. With `CHARM_NOTES=osapi` the store is imported on
+the first save. Until `charm_notes.osapi` exists, every save fails with "note store not installed";
+it never fakes success. The server never writes the vault itself.
 
 ## How `charm-client` works
 
