@@ -4,6 +4,8 @@
 #include "charm_ui.h"
 #include "charm_ui_debug.h"
 #include "dex_sprite.h"
+#include "dex_sprite_ext.h"
+#include "charm_assets_sprites.h"
 #include "sim_display.h"
 #include "test_host.h"
 #include "ui_card.h"
@@ -1031,6 +1033,208 @@ static void test_design_invariants() {
     CHECK(a.y1 >= 209 && a.x1 > 240);
 }
 
+
+// ---------------------------------------------------------------- Coach Beard (BRIEF § 11.9)
+
+static void coach_mode(const char *agent) {
+    std::string m = "{\"type\":\"mode\",\"value\":\"default\"";
+    if (agent) m += std::string(",\"agent\":\"") + agent + "\"";
+    feed(m + "}");
+}
+
+// mode.agent switches the character, crossfading at the anchor; a card shows its author; the
+// money / reading screens are Dex's alone.
+static void test_coach_character_switching() {
+    fresh();
+    CHECK(dex_get_character() == DEX_CHARACTER_DEX);
+    CHECK(dex_debug_crossfade_opa() == LV_OPA_TRANSP);
+    coach_mode("coach");
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Home);
+    CHECK(dex_get_pose() == DEX_POSE_IDLE);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Nothing needs you"));
+#if CHARM_SPRITE_SMOOTH
+    // motion.md: 2 cross frames x 80 ms, then only the new character.
+    run(40);
+    CHECK_EQ((int)dex_debug_crossfade_opa(), 170);
+    run(80);
+    CHECK_EQ((int)dex_debug_crossfade_opa(), 85);
+    run(80);
+#endif
+    CHECK(dex_debug_crossfade_opa() == LV_OPA_TRANSP);
+    feed("{\"type\":\"mode\",\"value\":\"default\",\"agent\":\"hermes\"}");  // unknown: no change
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    coach_mode(nullptr);  // absent: Dex (PROTOCOL § Agents)
+    CHECK(dex_get_character() == DEX_CHARACTER_DEX);
+
+    // Coach on screen, a Dex card arrives: the card shows Dex; money is never Coach's.
+    fresh();
+    coach_mode("coach");
+    feed_example("money.json");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Money);
+    CHECK(dex_get_character() == DEX_CHARACTER_DEX);
+    feed("{\"type\":\"dismiss\",\"card_id\":\"" + charm_ui_debug_card_id() + "\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Home);
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    feed_example("answer.json");  // source dex
+    CHECK(dex_get_character() == DEX_CHARACTER_DEX);
+
+    // A Coach answer with detail never becomes a reading screen, even in reading mode.
+    fresh();
+    feed("{\"type\":\"mode\",\"value\":\"reading\",\"book\":{\"title\":\"Piranesi\"}}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::ReadingHome);
+    CHECK(dex_get_character() == DEX_CHARACTER_DEX);
+    feed_card("{\"id\":\"c-ans\",\"kind\":\"answer\",\"title\":\"Waivers\",\"body\":\"Grab Tucker Kraft.\","
+              "\"detail\":\"Long reasoning.\",\"source\":\"coach\",\"created_at\":\"2026-09-28T12:00:00-05:00\","
+              "\"actions\":[{\"id\":\"hear\",\"label\":\"Hear it\"},{\"id\":\"later\",\"label\":\"Later\"}]}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Answer);
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    CHECK(dex_get_pose() == DEX_POSE_ATTENTION);
+    CHECK(charm_ui_debug_ui_button("read_more") == nullptr);
+}
+
+// C1: the walk-away job. "Coach is on it" + "You can put it down.", no Cancel, Coach working.
+static void test_coach_on_it() {
+    fresh();
+    coach_mode("coach");
+    feed("{\"type\":\"state\",\"value\":\"working\",\"agent\":\"coach\",\"label\":\"Coach is on it\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::CoachOnIt);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Coach is on it"));
+    CHECK(charm_ui_debug_cancel_button() == nullptr);
+    CHECK(dex_get_pose() == DEX_POSE_WORKING);
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    feed_example("coach/on-it.json");
+    CHECK(charm_ui_debug_surface() == CharmSurface::CoachOnIt);
+    CHECK_EQ(charm_ui_debug_card_id(), std::string("coach-job-001"));
+    CHECK_EQ(displayed_count("coach-job-001"), 1);
+    CHECK(charm_ui_debug_cancel_button() == nullptr);
+    CHECK(dex_get_pose() == DEX_POSE_WORKING);
+    // Put down: nothing needs the charm while he works; the talk button still listens.
+    charm_ui_talk_pressed();
+    CHECK(charm_ui_debug_surface() == CharmSurface::Listening);
+    charm_ui_talk_released();
+
+    // Dex on screen, a working state that names Coach: still Dex's Working, with Cancel.
+    fresh();
+    feed("{\"type\":\"state\",\"value\":\"working\",\"agent\":\"coach\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Working);
+    CHECK(charm_ui_debug_cancel_button() != nullptr);
+    CHECK(dex_get_character() == DEX_CHARACTER_DEX);
+}
+
+// C2: Coach's call. The verdict is the headline; Hear it / Why? / Later; Hear it can be asked
+// again; Why? waits honestly; Coach talks only while speech plays.
+static void test_coach_call() {
+    fresh();
+    coach_mode("coach");
+    feed_example("coach/on-it.json");
+    feed_example("coach/call.json");
+    feed("{\"type\":\"dismiss\",\"card_id\":\"coach-job-001\"}");
+    feed("{\"type\":\"state\",\"value\":\"attention\",\"agent\":\"coach\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::CoachCall);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Start Purdy"));
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    CHECK(dex_get_pose() == DEX_POSE_ASK_YES);
+    CHECK(host.speech_stops == 0 && sent_of("action").empty());  // no auto speech, nothing sent
+    lv_obj_t *hear = charm_ui_debug_action_button("hear");
+    lv_obj_t *why = charm_ui_debug_action_button("why");
+    lv_obj_t *later = charm_ui_debug_action_button("later");
+    CHECK(hear && why && later);
+    if (!hear || !why || !later) return;
+    lv_area_t a, b, c;
+    lv_obj_update_layout(hear);
+    lv_obj_get_coords(hear, &a);
+    lv_obj_get_coords(why, &b);
+    lv_obj_get_coords(later, &c);
+    CHECK(a.x1 == 24 && a.y1 >= 209 && a.y1 < b.y1 && b.y1 < c.y1 && c.y2 <= 448);  // the rail, top-down
+    CHECK(lv_obj_get_style_bg_opa(hear, 0) == LV_OPA_COVER);  // the gold pill
+    CHECK(lv_obj_get_style_bg_opa(why, 0) == LV_OPA_TRANSP);
+
+    click(hear);
+    run(200);
+    auto acts = sent_of("action");
+    CHECK_EQ(acts.size(), (size_t)1);
+    if (!acts.empty()) CHECK_EQ(std::string(acts[0]["action"] | ""), std::string("hear"));
+    CHECK(charm_ui_debug_action_button("hear") != nullptr);  // hear again any time
+    feed("{\"type\":\"state\",\"value\":\"speaking\",\"agent\":\"coach\"}");
+    feed("{\"type\":\"speech_start\",\"rate\":16000,\"format\":\"s16le\",\"channels\":1,\"card_id\":\"coach-call-001\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::CoachCall);
+    CHECK(dex_get_pose() == DEX_POSE_SPEAKING);
+    feed("{\"type\":\"speech_end\"}");
+    feed("{\"type\":\"state\",\"value\":\"idle\",\"agent\":\"coach\"}");
+    CHECK(dex_get_pose() == DEX_POSE_ASK_YES);
+
+    click(charm_ui_debug_action_button("why"));
+    run(200);
+    CHECK_EQ(sent_of("action").size(), (size_t)2);
+    CHECK(charm_ui_debug_action_button("later") == nullptr);  // sent: waiting, never "Done"
+    CHECK(!charm_ui_debug_done_shown());
+
+    // The fast path's old call: stale says so.
+    fresh();
+    coach_mode("coach");
+    std::string call = example("coach/call.json");
+    call.insert(call.find("\"source\""), "\"stale\": true, \"footer\": \"Called 3 d ago\", ");
+    feed_card(call);
+    CHECK(charm_ui_debug_surface() == CharmSurface::CoachCall);
+    CHECK(charm_ui_debug_stale_shown());
+
+    // A Coach call with no default is a "needs more" pick, with Coach's shrug.
+    fresh();
+    feed_card("{\"id\":\"c-q\",\"kind\":\"decision\",\"title\":\"Purdy or Maye?\",\"source\":\"coach\","
+              "\"created_at\":\"2026-09-28T12:00:00-05:00\",\"data\":{\"deadline\":\"Sun 12:00\"},"
+              "\"actions\":[{\"id\":\"a\",\"label\":\"Purdy\"},{\"id\":\"b\",\"label\":\"Maye\"}]}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::NeedsMore);
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+}
+
+// The voice stream lands at Coach's headset (his hand is pressed to the ear cup), not Dex's cup.
+static void test_coach_voice_stream_headset() {
+    fresh();
+    const lv_point_t dex_end = charm_ui_debug_stream_end();
+    coach_mode("coach");
+    run(200);
+    charm_ui_talk_pressed();
+    charm_ui_mic_level(0.7f);
+    run(400);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Listening);
+    CHECK(dex_get_pose() == DEX_POSE_LISTENING);
+    CHECK(charm_ui_debug_capsules() >= 3);
+    const lv_point_t end = charm_ui_debug_stream_end();
+    CHECK(end.x >= 280 && end.x <= 298 && end.y >= 290 && end.y <= 310);  // frames/listening-*.png
+    CHECK(end.x != dex_end.x || end.y != dex_end.y);
+    charm_ui_talk_released();
+}
+
+// Coach's frames are his own: every pose he draws is in the table, the rest is the placeholder,
+// and no Coach entry ever points at a Dex image.
+static void test_coach_frames_are_his_own() {
+#if CHARM_SPRITE_SMOOTH
+    const dex_pose_t drawn[] = {DEX_POSE_IDLE,  DEX_POSE_LISTENING, DEX_POSE_WORKING, DEX_POSE_ATTENTION,
+                                DEX_POSE_DONE,  DEX_POSE_SPEAKING,  DEX_POSE_ASLEEP,  DEX_POSE_OFFLINE,
+                                DEX_POSE_ERROR, DEX_POSE_ASK_YES};
+    for (dex_pose_t p : drawn) CHECK(charm_sprite_anims[DEX_CHARACTER_COACH][p][DEX_OUTFIT_DEFAULT].count > 0);
+    const dex_pose_t dex_only[] = {DEX_POSE_OFFER_BAG, DEX_POSE_LIFT_BAG, DEX_POSE_LOOKOUT, DEX_POSE_PAPER,
+                                   DEX_POSE_SHOW_PHONE};
+    for (dex_pose_t p : dex_only) CHECK(charm_sprite_anims[DEX_CHARACTER_COACH][p][DEX_OUTFIT_DEFAULT].count == 0);
+    for (int p = 0; p < DEX_POSE_COUNT; p++) {
+        for (int o = 0; o < DEX_OUTFIT_COUNT; o++) {
+            const charm_sprite_anim_t &c = charm_sprite_anims[DEX_CHARACTER_COACH][p][o];
+            for (int q = 0; q < DEX_POSE_COUNT; q++) {
+                for (int u = 0; u < DEX_OUTFIT_COUNT; u++) {
+                    const charm_sprite_anim_t &d = charm_sprite_anims[DEX_CHARACTER_DEX][q][u];
+                    for (int i = 0; i < c.count; i++)
+                        for (int k = 0; k < d.count; k++) CHECK(c.frames[i].img != d.frames[k].img);
+                }
+            }
+        }
+    }
+    // Coach blinks and glances like Dex (design frames-extra).
+    CHECK(charm_sprite_anims[DEX_CHARACTER_COACH][DEX_POSE_IDLE][DEX_OUTFIT_DEFAULT].blink != nullptr);
+    CHECK(charm_sprite_anims[DEX_CHARACTER_COACH][DEX_POSE_IDLE][DEX_OUTFIT_DEFAULT].sip.frames != nullptr);
+#endif
+}
+
 int main() {
     sim_display_init();
     struct {
@@ -1066,6 +1270,11 @@ int main() {
         {"saved_true_false", test_saved_true_false},
         {"reading_answer_scroll", test_reading_answer_scroll},
         {"design_invariants", test_design_invariants},
+        {"coach_character_switching", test_coach_character_switching},
+        {"coach_on_it", test_coach_on_it},
+        {"coach_call", test_coach_call},
+        {"coach_voice_stream_headset", test_coach_voice_stream_headset},
+        {"coach_frames_are_his_own", test_coach_frames_are_his_own},
     };
     for (auto &t : tests) {
         g_test = t.name;

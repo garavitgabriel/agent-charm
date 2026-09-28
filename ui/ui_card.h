@@ -42,6 +42,7 @@ struct Card {
 
     // decision
     std::string default_choice, deadline;
+    std::string flip_if;  // Coach's call: "Flip only if …" (optional, ≤ 80 chars)
     // money
     std::string store, currency, address_label;
     std::vector<CardItem> items;

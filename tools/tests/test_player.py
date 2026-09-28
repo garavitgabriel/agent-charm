@@ -65,8 +65,28 @@ def test_dex_player_animates(tmp_path: Path) -> None:
 
 @needs_sim
 def test_smooth_dex_player(tmp_path: Path) -> None:
+    # The player's character checks (a pose Coach has no frames for shows the placeholder, never
+    # Dex's; Dex's exit clip never crosses a switch) need a Coach with gaps: since the design's real
+    # Coach landed (batch 14) he draws done, so this check plays the committed smooth Dex with the
+    # dummy test-card Coach it was written against, generated into tmp_path like the pixel-art
+    # table above. The real Coach's coverage is checked in test_characters.py and the sim suite.
+    dex = tmp_path / "assets/dex"
+    shutil.copytree(REPO / "ui/assets-src/dex", dex)
+    assert cli.main(["dummy-coach", "--out", str(tmp_path / "assets/coach"), "--no-compile"]) == 0
+    gen = tmp_path / "dummy_coach_ui"
+    assert cli.main(["sprites", str(dex / "manifest.json"), "--out-dir", str(gen)]) == 0
+    for name in ("dex_sprite.cpp", "dex_sprite.h", "dex_sprite_ext.h"):
+        shutil.copy(REPO / "ui" / name, gen / name)
     exe = tmp_path / "check_dex_smooth"
-    _build(exe, [TOOLS / "player_check/check_dex_smooth.cpp"], [])
+    _build(
+        exe,
+        [
+            TOOLS / "player_check/check_dex_smooth.cpp",
+            gen / "dex_sprite.cpp",
+            gen / "charm_assets_sprites.cpp",
+        ],
+        [gen],
+    )
     shots = tmp_path / "shots"
     proc = subprocess.run([str(exe), str(shots)], capture_output=True, text=True, check=False)
     print(proc.stdout)

@@ -76,6 +76,7 @@ bool ui_card_parse(JsonObjectConst obj, Card *out) {
     JsonObjectConst d = obj["data"].as<JsonObjectConst>();
     c.default_choice = str(d["default"]);
     c.deadline = str(d["deadline"]);
+    c.flip_if = str(d["flip_if"]);  // Coach's call (PROTOCOL § Agents), optional
     c.store = str(d["store"]);
     c.currency = str(d["currency"]);
     c.address_label = str(d["address_label"]);

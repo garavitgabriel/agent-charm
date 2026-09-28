@@ -7,6 +7,7 @@
 #include "charm_host.h"
 #include "charm_ui_debug.h"
 #include "dex_sprite.h"
+#include "dex_sprite_ext.h"
 #include "ui_card.h"
 #include "ui_hold.h"
 #include "ui_motion.h"
@@ -77,6 +78,8 @@ struct UiState {
     std::string read_card;
     int read_offset = 0;
     int read_anchor_para = -1;  // paragraph to keep at the top across a text-size change
+    // Who wears the body when no card says otherwise: protocol `mode.agent` (absent = Dex).
+    dex_character_t mode_character = DEX_CHARACTER_DEX;
 };
 
 // Objects that live as long as the screen: the gesture root, the base layer (floor, separator,
@@ -230,6 +233,15 @@ bool is_stale(const Card &c) { return card_is_stale(c, S.clock.known, S.clock.no
 
 bool server_busy() { return S.server_state == "working" || S.server_state == "transcribing"; }
 
+// A card Coach wrote (PROTOCOL § Agents: source "coach").
+bool coach_card(const Card &c) { return c.source == "coach"; }
+
+const char *character_word(dex_character_t c) { return c == DEX_CHARACTER_COACH ? "Coach" : "Dex"; }
+
+// "hear" asks the server to speak the card again (PROTOCOL § Agents). It can be asked any number of
+// times and confirms nothing, so it never locks the card's actions.
+bool replayable(const std::string &action) { return action == "hear"; }
+
 bool speech_on() {
     if (!S.speech.empty()) return S.speech == "on";
     return !S.reading;  // PROTOCOL: reading defaults to quiet, everything else to speech on
@@ -249,12 +261,15 @@ int placard_action(const Card &c) {
 CharmSurface card_surface(const HeldCard &h) {
     const Card &c = h.card;
     switch (c.kind) {
-        case CardKind::Decision: return c.default_choice.empty() ? CharmSurface::NeedsMore : CharmSurface::Decision;
+        case CardKind::Decision:
+            if (c.default_choice.empty()) return CharmSurface::NeedsMore;
+            return coach_card(c) ? CharmSurface::CoachCall : CharmSurface::Decision;
         case CardKind::Money: return h.confirmed ? CharmSurface::Done : CharmSurface::Money;
         case CardKind::Tracker: return CharmSurface::Tracker;
         case CardKind::Edition: return CharmSurface::Edition;
-        case CardKind::Job: return CharmSurface::Job;
+        case CardKind::Job: return coach_card(c) ? CharmSurface::CoachOnIt : CharmSurface::Job;
         case CardKind::Answer:
+            if (coach_card(c)) return CharmSurface::Answer;  // Coach has no reading screens
             return (S.reading || c.book.present() || !c.detail.empty()) ? CharmSurface::ReadingAnswer
                                                                           : CharmSurface::Answer;
         case CardKind::Notice: return c.has_saved ? CharmSurface::Saved : CharmSurface::Answer;
@@ -272,7 +287,9 @@ bool is_card_surface(CharmSurface s) {
         case CharmSurface::Done:
         case CharmSurface::NeedsMore:
         case CharmSurface::ReadingAnswer:
-        case CharmSurface::Saved: return true;
+        case CharmSurface::Saved:
+        case CharmSurface::CoachOnIt:
+        case CharmSurface::CoachCall: return true;
         default: return false;
     }
 }
@@ -284,6 +301,9 @@ CharmSurface compute_surface() {
     if (S.night) return CharmSurface::Night;
     if (S.edition_view) return CharmSurface::Edition;
     if (HeldCard *c = focused_card()) return card_surface(*c);
+    // Coach's walk-away job: the server says he's working while he's the one on screen.
+    if (!S.sending && S.server_state == "working" && S.mode_character == DEX_CHARACTER_COACH)
+        return CharmSurface::CoachOnIt;
     if (S.sending || server_busy()) return CharmSurface::Working;
     if (S.reading) return CharmSurface::ReadingHome;
     return CharmSurface::Home;
@@ -313,6 +333,11 @@ dex_pose_t compute_pose(CharmSurface s) {
             if (S.speaking) return DEX_POSE_SPEAKING;
             return W.column && S.read_offset >= W.detail_top && W.detail_top < W.total ? DEX_POSE_PAPER
                                                                                      : DEX_POSE_ATTENTION;
+        case CharmSurface::CoachOnIt: return DEX_POSE_WORKING;  // head down over the tablet
+        // He holds up the call; talking only while its speech plays (honest mouth).
+        case CharmSurface::CoachCall:
+            if (S.speaking) return DEX_POSE_SPEAKING;
+            return h && h->confirmed ? DEX_POSE_DONE : DEX_POSE_ASK_YES;
         case CharmSurface::Home:
         case CharmSurface::ReadingHome: break;
     }
@@ -321,6 +346,26 @@ dex_pose_t compute_pose(CharmSurface s) {
     if (S.sending || server_busy()) return DEX_POSE_WORKING;
     if (S.server_state == "attention" || !S.cards.empty()) return DEX_POSE_ATTENTION;
     return DEX_POSE_IDLE;
+}
+
+// Who wears the body on this surface. A card shows the character who wrote it; the money, tracker,
+// edition and reading screens are Dex's alone (Coach never shows them); everything else follows
+// `mode.agent`. A character never plays another's frames: poses he doesn't have are the placeholder.
+dex_character_t surface_character(CharmSurface s, const HeldCard *visible) {
+    switch (s) {
+        case CharmSurface::Money:
+        case CharmSurface::Done:
+        case CharmSurface::Tracker:
+        case CharmSurface::Edition:
+        case CharmSurface::ReadingHome:
+        case CharmSurface::ReadingAnswer:
+        case CharmSurface::Saved: return DEX_CHARACTER_DEX;
+        case CharmSurface::CoachOnIt:
+        case CharmSurface::CoachCall: return DEX_CHARACTER_COACH;
+        default: break;
+    }
+    if (visible && is_card_surface(s)) return coach_card(visible->card) ? DEX_CHARACTER_COACH : DEX_CHARACTER_DEX;
+    return S.mode_character;
 }
 
 void activity() {
@@ -633,8 +678,8 @@ void rail_sent_state(const HeldCard &h, lv_coord_t y) {
     if (h.confirmed) {
         W.enter_rail.push_back(text(W.page, "Done.", tok::f24m(), tok::FG, tok::PAD, y, tok::LH24));
     } else {
-        W.enter_rail.push_back(text(W.page, "Sent. Waiting for Dex.", tok::f18r(), tok::FG2, tok::PAD, y, tok::LH18,
-                                    tok::RAIL_MAX_W));
+        const std::string waiting = std::string("Sent. Waiting for ") + character_word(dex_get_character()) + ".";
+        W.enter_rail.push_back(text(W.page, waiting, tok::f18r(), tok::FG2, tok::PAD, y, tok::LH18, tok::RAIL_MAX_W));
     }
 }
 
@@ -988,6 +1033,89 @@ void build_job(const HeldCard &h, bool stale) {
     }
 }
 
+// ---- Coach (§ 11.9)
+
+// C1: the walk-away job. No Cancel and no dots: he works in the background and the charm can be put
+// down; his call arrives later, quietly.
+void build_coach_on_it(const HeldCard *h) {
+    std::string head = h ? h->card.title : strip_dots(S.state_label);
+    if (head.empty()) head = "Coach is on it";
+    headline(head, tok::PAD, tok::LH32);
+    line("You can put it down.", tok::f18r(), tok::FG2, tok::PAD, tok::PAD + 46, tok::LH18, tok::CONTENT_W, 1);
+    if (h && is_stale(h->card)) rail_footer(stale_reason(h->card));
+}
+
+// Wrap at spaces only, never inside a word: LVGL also breaks at ':' and would split a time
+// ("Sun 12:" / "00"). A word wider than `width` stays whole on its own line.
+std::string wrap_words(const std::string &s, const lv_font_t *font, lv_coord_t width) {
+    std::string out, cur;
+    size_t pos = 0;
+    while (pos < s.size()) {
+        size_t end = s.find(' ', pos);
+        if (end == std::string::npos) end = s.size();
+        const std::string word = s.substr(pos, end - pos);
+        pos = end + 1;
+        if (word.empty()) continue;
+        const std::string trial = cur.empty() ? word : cur + " " + word;
+        if (!cur.empty() && text_width(trial, font) > width) {
+            out += (out.empty() ? "" : "\n") + cur;
+            cur = word;
+        } else {
+            cur = trial;
+        }
+    }
+    if (!cur.empty()) out += (out.empty() ? "" : "\n") + cur;
+    return out;
+}
+
+constexpr lv_coord_t FLIP_W = 232;  // the flip condition's short measure, as § 11.9 C2 sets it
+
+// C2: Coach's call, the Decision layout. The verdict (32), the deadline and the flip condition (18,
+// FG2); the card's age or staleness below them. Hear it is the gold pill; Why? and Later are text.
+void build_coach_call(const HeldCard &h, bool stale) {
+    const Card &c = h.card;
+    lv_coord_t y = headline(strip_dots(c.default_choice), tok::PAD, 2 * tok::LH32);
+    y = (lv_coord_t)(y + 8);
+    if (!c.deadline.empty()) {
+        line(c.deadline, tok::f18r(), tok::FG2, tok::PAD, y, tok::LH18, tok::CONTENT_W, 1);
+        y = (lv_coord_t)(y + tok::LH18 + 12);
+    }
+    auto block = [&](const std::string &s, int max_lines) {
+        const int room = (tok::CONTENT_BOTTOM - y) / tok::LH18;
+        const int n = LV_MIN(max_lines, LV_MIN(room, text_lines(s, tok::f18r(), tok::LH18, tok::CONTENT_W)));
+        if (s.empty() || n <= 0) return;
+        line(s, tok::f18r(), tok::FG2, tok::PAD, y, tok::LH18, tok::CONTENT_W, n);
+        y = (lv_coord_t)(y + n * tok::LH18 + 8);
+    };
+    // Stale data says it's stale, ahead of anything else that competes for the room.
+    if (stale) block(stale_reason(c), 2);
+    block(wrap_words(c.flip_if, tok::f18r(), FLIP_W), 2);
+    block(c.footer, 2);  // e.g. the fast path's "Called 1 h ago"
+
+    if (!h.sent_action.empty()) {
+        rail_sent_state(h, 236);
+        return;
+    }
+    int primary = -1;
+    for (size_t i = 0; i < c.actions.size() && primary < 0; i++) {
+        if (c.actions[i].style == "primary") primary = (int)i;
+    }
+    if (primary < 0 && !c.actions.empty()) primary = 0;
+    lv_coord_t ay = 232;
+    if (primary >= 0) {
+        const CardAction &a = c.actions[(size_t)primary];
+        lv_obj_t *p = pill(a.label.empty() ? a.id : a.label, ay, 128, 22);
+        register_action(a.id, p);
+        ay = (lv_coord_t)(ay + lv_obj_get_style_height(p, 0) + 11);
+    }
+    for (size_t i = 0; i < c.actions.size(); i++) {
+        if ((int)i == primary) continue;
+        const CardAction &a = c.actions[i];
+        register_action(a.id, text_action(a.label.empty() ? a.id : a.label, ay, 120));
+        ay = (lv_coord_t)(ay + 62);
+    }
+}
+
 void build_offline() {
     headline("No connection", tok::PAD, tok::LH32);
     line("Nothing is sent or ordered\nuntil it\xE2\x80\x99s back.", tok::f18r(), tok::FG2, tok::PAD, tok::PAD + 46,
@@ -997,7 +1125,8 @@ void build_offline() {
 std::string error_words() {
     if (!S.error_text.empty()) return S.error_text;
     if (S.error_code == "no_speech" || S.error_code == "too_short") return "I didn\xE2\x80\x99t catch that.";
-    if (S.error_code == "agent_timeout") return "Dex didn\xE2\x80\x99t answer in time.";
+    if (S.error_code == "agent_timeout")
+        return std::string(character_word(S.mode_character)) + " didn\xE2\x80\x99t answer in time.";
     if (S.error_code == "save_failed") return "Not saved.";
     return "Something went wrong.";
 }
@@ -1324,6 +1453,7 @@ void rebuild() {
     lv_obj_set_style_line_color(L.sep, lv_color_hex(night ? tok::LINE_N : tok::LINE), 0);
 
     dex_set_size(DEX_SIZE_FULL);  // design § 11.6: full body at the one anchor, always
+    dex_set_character_crossfade(surface_character(s, visible));  // motion.md: 2 cross frames at the anchor
     dex_set_pose(compute_pose(s));
 
     switch (s) {
@@ -1344,6 +1474,8 @@ void rebuild() {
         case CharmSurface::Job: if (visible) build_job(*visible, shown_stale); break;
         case CharmSurface::ReadingAnswer: if (visible) build_reading_answer(*visible); break;
         case CharmSurface::Saved: if (visible) build_saved(*visible); break;
+        case CharmSurface::CoachOnIt: build_coach_on_it(visible); break;
+        case CharmSurface::CoachCall: if (visible) build_coach_call(*visible, shown_stale); break;
     }
     if (animate) start_enter();
     update_live();
@@ -1358,10 +1490,17 @@ void rebuild() {
 
 // ---------------------------------------------------------------- live updates (25 fps)
 
+// Where the voice stream lands: the hand the frames mark; without points, where each character
+// listens (Dex's cupped hand, Coach's hand on his headset).
+motion::Pt stream_end() {
+    const lv_area_t hand =
+        point_or(DEX_POINT_HAND, dex_get_character() == DEX_CHARACTER_COACH ? tok::COACH_HEADSET : tok::HAND_CUP);
+    return {(float)(hand.x1 + hand.x2) / 2, (float)(hand.y1 + hand.y2) / 2};
+}
+
 void update_stream(uint32_t now) {
     stream.update(now, S.mic_level);
-    const lv_area_t hand = point_or(DEX_POINT_HAND, tok::HAND_CUP);
-    const motion::Pt end = {(float)(hand.x1 + hand.x2) / 2, (float)(hand.y1 + hand.y2) / 2};
+    const motion::Pt end = stream_end();
     size_t i = 0;
     for (const motion::Capsule &c : stream.caps) {
         if (i >= (size_t)STREAM_LINES) break;
@@ -1486,6 +1625,10 @@ void action_event(lv_event_t *e) {
             activity();
             lv_obj_set_style_opa(target, motion::TAP_OPA, 0);
             send_action(h->card.id, a.first, false, 0);
+            if (replayable(a.first)) {  // the actions stay: he can be heard again
+                rebuild_at = now_ms() + motion::TAP_MS;
+                return;
+            }
             h->sent_action = a.first;
             h->confirmed = false;
             rebuild_at = now_ms() + motion::TAP_MS;  // 70 % for 80 ms, then the exit (in tick)
@@ -1753,6 +1896,11 @@ void on_mode(JsonObjectConst msg) {
     if (reading != S.reading) S.speech.clear();  // a new mode starts from its protocol default
     S.reading = reading;
     S.book = reading ? ui_book_parse(msg["book"].as<JsonObjectConst>()) : CardBook{};
+    // PROTOCOL § Agents: the named character is shown; Dex is assumed when `agent` is absent. An
+    // unknown agent changes nothing.
+    const char *agent = msg["agent"].as<const char *>();
+    dex_character_t c = DEX_CHARACTER_DEX;
+    if (!agent || dex_character_from_agent(agent, &c)) S.mode_character = c;
 }
 
 void on_setting(JsonObjectConst msg) {
@@ -2014,6 +2162,8 @@ const char *charm_ui_surface_name(CharmSurface s) {
         case CharmSurface::ReadingHome: return "READING_HOME";
         case CharmSurface::ReadingAnswer: return "READING_ANSWER";
         case CharmSurface::Saved: return "SAVED";
+        case CharmSurface::CoachOnIt: return "COACH_ON_IT";
+        case CharmSurface::CoachCall: return "COACH_CALL";
     }
     return "?";
 }
@@ -2047,6 +2197,10 @@ float charm_ui_debug_bag_fill(void) {
 }
 std::string charm_ui_debug_hold_label(void) { return W.hold_label ? lv_label_get_text(W.hold_label) : ""; }
 size_t charm_ui_debug_capsules(void) { return stream.caps.size(); }
+lv_point_t charm_ui_debug_stream_end(void) {
+    const motion::Pt p = stream_end();
+    return {(lv_coord_t)lroundf(p.x), (lv_coord_t)lroundf(p.y)};
+}
 std::string charm_ui_debug_headline(void) { return W.headline; }
 bool charm_ui_debug_transitioning(void) { return L.exiting != nullptr || (int32_t)(W.enter_end - now_ms()) > 0; }
 std::string charm_ui_debug_speech(void) { return speech_on() ? "on" : "off"; }

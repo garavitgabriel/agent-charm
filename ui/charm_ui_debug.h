@@ -25,6 +25,9 @@ enum class CharmSurface {
     ReadingHome,    // R1 / R4: book, chapter, speak/quiet state (from the server's echo)
     ReadingAnswer,  // R2 / R3 / R5: the lead + scrollable detail
     Saved,          // R6: a save receipt (saved or NOT saved)
+    // Coach Beard (BRIEF § 11.9, docs/design/final/coach): the walk-away job and his call.
+    CoachOnIt,      // C1: "Coach is on it" + "You can put it down." (no Cancel)
+    CoachCall,      // C2: the verdict (32), deadline, flip_if; Hear it / Why? / Later
 };
 
 const char *charm_ui_surface_name(CharmSurface surface);
@@ -46,6 +49,7 @@ int charm_ui_debug_fuse_px(void);             // listening fuse accent length on
 float charm_ui_debug_bag_fill(void);          // the bag fill as drawn (stepped, incl. the drain), 0..1
 std::string charm_ui_debug_hold_label(void);  // "Hold Dex to order" / "Ordering…" ("" off money)
 size_t charm_ui_debug_capsules(void);         // voice-stream capsules in flight
+lv_point_t charm_ui_debug_stream_end(void);  // where the voice stream lands (the character's hand)
 std::string charm_ui_debug_headline(void);    // the dominant text on screen ("" if none)
 bool charm_ui_debug_transitioning(void);      // old content still exiting or new content entering
 

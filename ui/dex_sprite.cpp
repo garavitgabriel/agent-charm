@@ -15,8 +15,11 @@
 // A pose/outfit with no frames falls back to the gray placeholder box labeled with character, pose
 // and outfit. A character never plays another character's frames: an outfit borrows only its own
 // character's default frames (the generator's fallback), and a character switch cancels the old
-// character's exit clip.
+// character's exit clip. dex_set_character_crossfade() (dex_sprite_ext.h, the UI's switch) crossfades at
+// the anchor (motion.md: 2 cross frames x 80 ms): the outgoing character's last frame is copied into a
+// ghost over the new one and steps 2/3 -> 1/3 -> gone. dex_set_character() swaps at once.
 #include "dex_sprite.h"
+#include "dex_sprite_ext.h"
 #include "charm_assets_sprites.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +58,7 @@ lv_obj_t *box;
 lv_obj_t *label;
 lv_obj_t *beat;  // a small square that steps each frame: proof the animation clock runs
 lv_obj_t *img;   // the sprite
+lv_obj_t *ghost; // the outgoing character during a crossfade (smooth frames only)
 dex_pose_t pose = DEX_POSE_IDLE;
 dex_outfit_t outfit = DEX_OUTFIT_DEFAULT;
 dex_character_t character = DEX_CHARACTER_DEX;
@@ -148,6 +152,68 @@ uint32_t rand_between(uint32_t lo, uint32_t hi) {
     rng ^= rng >> 17;
     rng ^= rng << 5;
     return lo + rng % (hi - lo + 1);
+}
+
+// ---- the character crossfade
+constexpr uint32_t CROSS_MS = 80;  // per cross frame
+constexpr lv_opa_t CROSS_OPA[2] = {170, 85};  // the outgoing character: 2/3, then 1/3
+lv_color_t *ghost_pixels;  // allocated on the first switch
+lv_img_dsc_t ghost_dsc = {{LV_IMG_CF_TRUE_COLOR, 0, 0, (uint32_t)CELL_W, (uint32_t)CELL_H}, PIXEL_BYTES, nullptr};
+bool ghost_on, ghost_clock_set;
+uint32_t ghost_since;
+lv_opa_t ghost_opa;
+
+void ghost_off() {
+    ghost_on = false;
+    ghost_opa = LV_OPA_TRANSP;
+    if (ghost) lv_obj_add_flag(ghost, LV_OBJ_FLAG_HIDDEN);
+}
+
+// Called before a character switch: freeze what is on screen now (only a real frame, never the
+// placeholder box) so it can fade out over the incoming character.
+void ghost_capture() {
+    if (!ghost || !anim || hidden || size != DEX_SIZE_FULL || shown_img >= CHARM_SPRITE_IMAGES) {
+        ghost_off();
+        return;
+    }
+    if (!ghost_pixels) {
+#if defined(ESP_PLATFORM)
+        ghost_pixels = (lv_color_t *)heap_caps_malloc(PIXEL_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+#else
+        ghost_pixels = (lv_color_t *)malloc(PIXEL_BYTES);
+#endif
+        if (!ghost_pixels) return;  // no memory: an instant swap, still at the anchor
+        ghost_dsc.data = (const uint8_t *)ghost_pixels;
+        lv_img_set_src(ghost, &ghost_dsc);
+        lv_img_set_pivot(ghost, 0, 0);
+    }
+    memcpy(ghost_pixels, pixels, PIXEL_BYTES);
+    lv_img_cache_invalidate_src(&ghost_dsc);
+    lv_obj_set_pos(ghost, 0, shown_dy);
+    ghost_on = true;
+    ghost_clock_set = false;
+    ghost_opa = CROSS_OPA[0];
+    lv_obj_set_style_opa(ghost, ghost_opa, 0);
+    lv_obj_clear_flag(ghost, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_move_foreground(ghost);
+    lv_obj_invalidate(ghost);
+}
+
+void ghost_tick(uint32_t now) {
+    if (!ghost_on) return;
+    if (!ghost_clock_set) {
+        ghost_since = now;
+        ghost_clock_set = true;
+    }
+    const uint32_t step = (now - ghost_since) / CROSS_MS;
+    if (step >= 2) {
+        ghost_off();
+        return;
+    }
+    if (CROSS_OPA[step] != ghost_opa) {
+        ghost_opa = CROSS_OPA[step];
+        lv_obj_set_style_opa(ghost, ghost_opa, 0);
+    }
 }
 
 uint32_t next_blink_from(uint32_t now) {
@@ -328,6 +394,13 @@ void create_sprite() {
         lv_img_set_src(img, &shown);
         lv_img_set_pivot(img, 0, 0);
     }
+    ghost = lv_img_create(box);
+    lv_obj_clear_flag(ghost, LV_OBJ_FLAG_CLICKABLE);
+    if (ghost_pixels) {
+        lv_img_set_src(ghost, &ghost_dsc);
+        lv_img_set_pivot(ghost, 0, 0);
+    }
+    ghost_off();
 }
 
 void tick(uint32_t now) {
@@ -535,6 +608,12 @@ void tick(uint32_t now_ms) {
 // Pixel-art frames carry no overlay points: the UI uses its fallback coordinates.
 bool point_area(dex_point_t, lv_area_t *) { return false; }
 
+// Pixel art swaps characters instantly.
+lv_opa_t ghost_opa = LV_OPA_TRANSP;
+void ghost_off() {}
+void ghost_capture() {}
+void ghost_tick(uint32_t) {}
+
 #endif
 
 }  // namespace
@@ -547,6 +626,7 @@ void dex_create(lv_obj_t *parent) {
     hidden = false;
     frame = -1;
     anim = nullptr;
+    ghost = nullptr;
     box = lv_obj_create(parent);
     lv_obj_remove_style_all(box);
     lv_obj_set_style_bg_color(box, lv_color_hex(0x505050), 0);
@@ -582,6 +662,14 @@ void dex_set_pose(dex_pose_t p) {
 
 void dex_set_character(dex_character_t c) {
     if (c >= DEX_CHARACTER_COUNT || c == character) return;
+    ghost_off();
+    character = c;
+    restyle();
+}
+
+void dex_set_character_crossfade(dex_character_t c) {
+    if (c >= DEX_CHARACTER_COUNT || c == character) return;
+    ghost_capture();
     character = c;
     restyle();
 }
@@ -624,6 +712,7 @@ void dex_set_hidden(bool h) {
 
 void dex_tick(uint32_t now_ms) {
     if (!box) return;
+    ghost_tick(now_ms);
     if (anim) {
         tick(now_ms);
         return;
@@ -632,6 +721,7 @@ void dex_tick(uint32_t now_ms) {
 }
 
 dex_pose_t dex_get_pose(void) { return pose; }
+lv_opa_t dex_debug_crossfade_opa(void) { return ghost_opa; }
 dex_outfit_t dex_get_outfit(void) { return outfit; }
 dex_size_t dex_get_size(void) { return size; }
 
