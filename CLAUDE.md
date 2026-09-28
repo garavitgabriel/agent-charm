@@ -1,7 +1,7 @@
 # Dex Charm — repo guide
 
 Dex with a body: a pocket ESP32-S3 AMOLED device, the always-animated **smooth illustrated** Dex, and a
-voice/cards server for the owner's agent fleet.
+voice/cards server for your agent (any OpenAI-compatible model, or a Hermes agent).
 
 ## Read first (every builder, every time)
 
@@ -18,7 +18,7 @@ voice/cards server for the owner's agent fleet.
 **Where the design and the contract disagree, the contract wins.** Tell the chief, who resolves it
 with the design owner. Rulings so far:
 - The answer-card footer comes from the server and follows PROTOCOL clarification #5 ("Shortened. Ask
-  Dex for the rest."). It never says "Full version in Telegram" unless something was actually sent
+  Dex for the rest."). It never says "Full version in <chat app>" unless something was actually sent
   there.
 - The Listening "fuse" runs for the listen limit, **25 s** (the firmware and UI limit), not 30 s.
 - **Sprite cell is 192×224** (not the 192×192 in BRIEF § 11.7). At scale 0.62 Dex spans the hip
@@ -56,10 +56,10 @@ with the design owner. Rulings so far:
   - Money needs a ≥2000 ms hold of Dex's bag on a preview (never a tap).
   - v0 never places a real order.
   - Dex never promises to nudge.
-- **Hermes is read-and-converse only from this project.** Reach it the way Margin does (an SSH
-  `hermes` alias into the container's local API). Make no Hermes config, cron or charter changes.
+- **The agent is read-and-converse only from this project.** With the Hermes backend, reach it over
+  an SSH `hermes` alias into the container's local API. Make no agent config, cron or charter changes.
 - **Vault writes go only through the OS knowledge service's `POST /submit`** (inbox-only, new files
   only). Never write to the synced vault folder directly.
-- **Margin is the hardware reference** (`margin`, local only). Copy code from it with its
-  license and provenance; never modify that repo.
+- **Margin is the hardware reference** (the author's earlier firmware for this board, not
+  published). Code ported from it carries a provenance comment.
 - Commits: `area: brief description` (e.g. `server: add edge-tts synthesis`).

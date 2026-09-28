@@ -365,9 +365,7 @@ def test_ssh_command_is_the_margin_path_with_keepalives() -> None:
     assert command[0] == "ssh" and "BatchMode=yes" in command
     assert "ServerAliveInterval=15" in command and command[-2] == "hermes"
     remote = command[-1]
-    assert remote.startswith(
-        "docker exec -i hermes-agent /opt/hermes/.venv/bin/python -u -c "
-    )
+    assert remote.startswith("docker exec -i hermes-agent /opt/hermes/.venv/bin/python -u -c ")
     encoded = re.search(r"b64decode\('([A-Za-z0-9+/=]+)'\)", remote)
     assert encoded is not None and base64.b64decode(encoded.group(1)).decode() == WORKER
     # Only base64 inside the double quotes: nothing for the remote shell to expand.

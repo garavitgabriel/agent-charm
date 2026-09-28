@@ -1,0 +1,78 @@
+{
+  "desk": "almanac",
+  "generated_at": "2026-09-25T13:00:50+00:00",
+  "fresh_until": "2026-09-26T13:00:50+00:00",
+  "status": "ok",
+  "summary_line": "Springfield 2026-09-25: 12.9–22.4°C; sunrise 2026-09-25T05:45; sunset 2026-09-25T17:50; moonrise 2026-09-25T17:09; Full moon.",
+  "telegram_line": "",
+  "md_path": "",
+  "sections": {
+    "now": {
+      "time": "2026-09-25T08:00",
+      "temperature_2m": 16.0,
+      "weather_code": 3
+    },
+    "today": {
+      "date": "2026-09-25",
+      "temp_max_c": 22.4,
+      "temp_min_c": 12.9,
+      "sunrise": "2026-09-25T05:45",
+      "sunset": "2026-09-25T17:50",
+      "moonrise": "2026-09-25T17:09",
+      "weather_code": 51
+    },
+    "tomorrow": {
+      "date": "2026-09-26",
+      "temp_max_c": 22.6,
+      "temp_min_c": 11.8,
+      "sunrise": "2026-09-26T05:44",
+      "sunset": "2026-09-26T17:50",
+      "moonrise": "2026-09-26T17:52",
+      "weather_code": 81
+    },
+    "four_day": [
+      {
+        "date": "2026-09-25",
+        "temp_max_c": 22.4,
+        "temp_min_c": 12.9,
+        "sunrise": "2026-09-25T05:45",
+        "sunset": "2026-09-25T17:50",
+        "moonrise": "2026-09-25T17:09",
+        "weather_code": 51
+      },
+      {
+        "date": "2026-09-26",
+        "temp_max_c": 22.6,
+        "temp_min_c": 11.8,
+        "sunrise": "2026-09-26T05:44",
+        "sunset": "2026-09-26T17:50",
+        "moonrise": "2026-09-26T17:52",
+        "weather_code": 81
+      },
+      {
+        "date": "2026-09-27",
+        "temp_max_c": 19.7,
+        "temp_min_c": 11.0,
+        "sunrise": "2026-09-27T05:44",
+        "sunset": "2026-09-27T17:49",
+        "moonrise": "2026-09-27T18:37",
+        "weather_code": 80
+      },
+      {
+        "date": "2026-09-28",
+        "temp_max_c": 21.6,
+        "temp_min_c": 10.7,
+        "sunrise": "2026-09-28T05:44",
+        "sunset": "2026-09-28T17:49",
+        "moonrise": "2026-09-28T19:26",
+        "weather_code": 80
+      }
+    ],
+    "moon_phase": {
+      "name": "Full moon",
+      "phase_fraction": 0.4635,
+      "illumination": 0.9869,
+      "calculation": "synodic cycle anchored 2000-01-06"
+    }
+  }
+}

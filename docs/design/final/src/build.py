@@ -359,7 +359,7 @@ def s_answer(acc, u):
     for tm, ev in (("9:30", "Design review"), ("11:00", "Lineup lock"), ("20:00", "Dinner")):
         t += txt(PAD, y + 5, T18, tm, FG2, 400) + txt(PAD + 64, y, T24, ev)
         y += 30
-    t += txt(PAD, 396, T18, "Full version<br>in Telegram", FG2, 400)
+    t += txt(PAD, 396, T18, "Shortened. Ask<br>Dex for the rest.", FG2, 400)
     return art, t
 
 
@@ -367,7 +367,7 @@ def s_decision(acc, u):
     art = floor() + separator() + place(pose_ask(P, acc, u + "d"))
     # the placard's face is the default action (Yes, Sunday)
     cx, cy = DEX_X + 114 * S, DEX_Y - 190 * S
-    t = txt(PAD, PAD, T32, "Pause the side project?") + txt(PAD, PAD + 46, T18, "Default: yes, Sunday.", FG2, 400)
+    t = txt(PAD, PAD, T32, "Pause Side Quest?") + txt(PAD, PAD + 46, T18, "Default: yes, Sunday.", FG2, 400)
     t += (f'<button type="button" aria-label="Yes, pause Sunday" style="position: absolute; left: {f(cx - 34)}px; '
           f'top: {f(cy - 28)}px; width: 68px; height: 56px; background: transparent; border: 0; padding: 0; margin: 0; '
           f'color: {ON_ACC}; font-family: {FONT}; font-size: {T24}px; line-height: 26px; font-weight: 600; '
@@ -379,8 +379,8 @@ def s_decision(acc, u):
 def money_head():
     t = txt(PAD, PAD + 3, T18, "Corner Bistro", FG, 500)
     t += (f'<div style="position: absolute; left: {PAD}px; top: 62px; white-space: nowrap; color: {FG}; font-weight: 500">'
-          f'<span style="font-size: {T40}px; line-height: 47px; letter-spacing: -0.4px">$58.400</span>'
-          f'<span style="font-size: {T32}px; line-height: 47px; letter-spacing: -0.4px; margin-left: 8px">COP</span></div>')
+          f'<span style="font-size: {T40}px; line-height: 47px; letter-spacing: -0.4px">$18.40</span>'
+          f'<span style="font-size: {T32}px; line-height: 47px; letter-spacing: -0.4px; margin-left: 8px">USD</span></div>')
     t += txt(PAD, 120, T18, "2 items · 35 min · Home", FG2, 400)
     return t
 
@@ -456,7 +456,7 @@ def s_offline(acc, u):
 
 def s_needs(acc, u):
     art = floor() + separator() + place(pose_shrug(P, u + "q"))
-    t = txt(PAD, PAD, T32, "Which Corner Bistro, Downtown<br>or Riverside?")
+    t = txt(PAD, PAD, T32, "Which Corner<br>Bistro, Downtown<br>or Riverside?")
     t += pill(282, "Downtown", acc, w=148, padx=18) + pill(354, "Riverside", acc, w=148, padx=18)
     return art, t
 

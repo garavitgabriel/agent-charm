@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: python (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [server, notes, feeds, tools]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: ffmpeg (server)
+        if: matrix.package == 'server'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: lint + types (server, feeds, tools)
+        if: matrix.package != 'notes'
+        working-directory: ${{ matrix.package }}
+        run: uv run ruff check . && uv run mypy src
+      - name: tests
+        working-directory: ${{ matrix.package }}
+        run: uv run pytest -q
+
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ hashFiles('firmware/platformio.ini') }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install platformio
+      - name: build (placeholder secrets; secrets.h is never in CI)
+        working-directory: firmware
+        run: pio run -e charm
+      - name: native unit tests
+        working-directory: firmware
+        run: pio test -e native
+
+  sim:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: brew install sdl2 ffmpeg
+      - name: build
+        run: cmake -S sim -B build/sim && cmake --build build/sim -j 4
+      - name: ctest
+        run: ctest --test-dir build/sim --output-on-failure
+      - name: screenshots
+        run: ./build/sim/charm-sim --shots out/shots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sim-shots
+          path: out/shots

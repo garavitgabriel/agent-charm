@@ -1,11 +1,13 @@
 # notes — reading notes store ("save this thought")
 
-Saves the owner's **verbatim** thoughts, with book/chapter context, to the personal OS vault inbox via
-the OS knowledge service (`POST /submit` → `inbox/<date>-charm-<slug>.md`, new file only).
+Saves your **verbatim** thoughts, with book/chapter context, to a notes-vault inbox via an HTTP
+knowledge service, "the OS knowledge service" below (`POST /submit` → `inbox/<date>-charm-<slug>.md`,
+new file only). You don't need it to run the charm: the server's default note store
+(`CHARM_NOTES=file`) writes the same Markdown files to a local folder.
 The charm server depends on this package through the `NoteStore` interface in
 `src/charm_notes/__init__.py` (a chief-owned contract, like `docs/PROTOCOL.md`).
 
-See `.parallel-plans/` for the active build brief.
+Build history: `docs/internal/parallel-plans/`.
 
 ## Stores
 
@@ -50,7 +52,7 @@ receipt = await store.save(note)  # SaveReceipt(ok=True, where="inbox/…") or o
 
 ### Config
 
-This follows the same resolution as the vault's `os` CLI (`gabe-os-service/cli/os`):
+This follows the same resolution order as the service's `os` command-line client:
 
 1. Env `OS_API_BASE` and `OS_API_TOKEN` (env wins, per variable).
 2. Otherwise the first file that exists: `$OS_API_CONFIG`, then `~/.os-api.env`, then
@@ -93,7 +95,7 @@ tags: [reading, charm]
 - **Body:**
   - The body is the thought, **verbatim**, as a markdown blockquote: each line is prefixed `> `, and
     empty lines become `>`.
-  - Nothing is generated, summarized or added. Strip the quote prefix and you get the owner's exact
+  - Nothing is generated, summarized or added. Strip the quote prefix and you get the speaker's exact
     words back.
 
 ## CLI

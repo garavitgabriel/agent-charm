@@ -1,0 +1,662 @@
+{
+  "desk": "sports",
+  "generated_at": "2026-09-25T13:31:01+00:00",
+  "fresh_until": "2026-09-25T21:31:01+00:00",
+  "status": "ok",
+  "summary_line": "Today is Friday. This week's lineup: Start J.K. Dobbins over Rico Dowdle; Rico Dowdle is Questionable; George Kittle is Questionable. Projected 118.6. Next kickoff Sun 1:00 PM ET.",
+  "telegram_line": "Today is Friday. This week's lineup: Start J.K. Dobbins over Rico Dowdle; Rico Dowdle is Questionable; George Kittle is Questionable. Projected 118.6. Next kickoff Sun 1:00 PM ET.",
+  "md_path": "",
+  "sections": {
+    "today": {
+      "phase": "lineup_week",
+      "today": "Friday",
+      "local_time": "9:30 AM ET",
+      "do_now": [
+        {
+          "kind": "swap",
+          "headline": "Start J.K. Dobbins over Rico Dowdle",
+          "detail": "+2.4 — J.K. Dobbins projects 9.99 to Rico Dowdle's 7.6 this week.",
+          "deadline": "Sun 1:00 PM ET"
+        },
+        {
+          "kind": "injury",
+          "headline": "Rico Dowdle is Questionable",
+          "detail": "listed Questionable as of 2026-09-24T20:48:00+00:00 (Dowdle (toe) didn't practice Thursday, Alan Saunders of Steelers Now reports.)",
+          "deadline": "Sun 1:00 PM ET"
+        },
+        {
+          "kind": "injury",
+          "headline": "George Kittle is Questionable",
+          "detail": "listed Questionable as of 2026-09-17T22:22:00+00:00 (Kittle (Achilles) practiced in a limited capacity Thursday, Matt Maiocco of NBC Sports Bay Area reports.)",
+          "deadline": "Sun 1:00 PM ET"
+        }
+      ],
+      "skip": "The wire — a set lineup with no injuries needs nothing from it today. ",
+      "numbers": {
+        "projected_points": 118.6,
+        "win_probability": null
+      },
+      "say": "Today is Friday. This week's lineup: Start J.K. Dobbins over Rico Dowdle; Rico Dowdle is Questionable; George Kittle is Questionable. Projected 118.6. Next kickoff Sun 1:00 PM ET.",
+      "details": {
+        "composed": [
+          "weekly_lineup"
+        ]
+      },
+      "markdown": "Today is Friday. This week's lineup: Start J.K. Dobbins over Rico Dowdle; Rico Dowdle is Questionable; George Kittle is Questionable. Projected 118.6. Next kickoff Sun 1:00 PM ET.\n\n1. **Start J.K. Dobbins over Rico Dowdle** — +2.4 — J.K. Dobbins projects 9.99 to Rico Dowdle's 7.6 this week. _(by Sun 1:00 PM ET)_\n2. **Rico Dowdle is Questionable** — listed Questionable as of 2026-09-24T20:48:00+00:00 (Dowdle (toe) didn't practice Thursday, Alan Saunders of Steelers Now reports.) _(by Sun 1:00 PM ET)_\n3. **George Kittle is Questionable** — listed Questionable as of 2026-09-17T22:22:00+00:00 (Kittle (Achilles) practiced in a limited capacity Thursday, Matt Maiocco of NBC Sports Bay Area reports.) _(by Sun 1:00 PM ET)_\n\n_Skip today:_ The wire — a set lineup with no injuries needs nothing from it today. ",
+      "platform": "sleeper",
+      "league_id": "0",
+      "league": "Sample League",
+      "scoring": "half_ppr",
+      "team": "Sample Squad",
+      "rhythm": {
+        "today": "Friday",
+        "local_time": "9:31 AM ET",
+        "timezone": "America/New_York",
+        "week": 3,
+        "league_waivers": "Tue after day (Wed 3:00 AM ET)",
+        "guide": "https://zoneread.io/rhythm",
+        "next": "Waivers run Tue after day (Wed 3:00 AM ET) — Ask: what do I do today? the evening before, and `today` runs `waiver_targets`.",
+        "then": "Then ask `today` again before the first kickoff (Sunday 1:00 PM ET) — it runs `weekly_lineup`.",
+        "say": "Today is Friday. Waivers run Tue after day (Wed 3:00 AM ET) — Ask: what do I do today? the evening before, and `today` runs `waiver_targets`. Then ask `today` again before the first kickoff (Sunday 1:00 PM ET) — it runs `weekly_lineup`. The weekly rhythm, in full: https://zoneread.io/rhythm"
+      }
+    },
+    "my_roster": {
+      "structuredContent": {
+        "league": "Sample League",
+        "roster_id": 6,
+        "record": "2-0",
+        "players": [
+          {
+            "name": "Drake Maye",
+            "position": "QB",
+            "team": "NE",
+            "bye_week": 11,
+            "projected_points": 287.1,
+            "projected_ppg": 16.9,
+            "value_over_replacement": 25.6,
+            "tier": 2,
+            "injury_status": null
+          },
+          {
+            "name": "Brock Purdy",
+            "position": "QB",
+            "team": "SF",
+            "bye_week": 8,
+            "projected_points": 283.2,
+            "projected_ppg": 16.7,
+            "value_over_replacement": 21.7,
+            "tier": 2,
+            "injury_status": null
+          },
+          {
+            "name": "Kenneth Walker III",
+            "position": "RB",
+            "team": "KC",
+            "bye_week": 5,
+            "projected_points": 268.1,
+            "projected_ppg": 15.8,
+            "value_over_replacement": 134.9,
+            "tier": 1,
+            "injury_status": null
+          },
+          {
+            "name": "Jaxon Smith-Njigba",
+            "position": "WR",
+            "team": "SEA",
+            "bye_week": 11,
+            "projected_points": 250.5,
+            "projected_ppg": 14.7,
+            "value_over_replacement": 111.9,
+            "tier": 1,
+            "injury_status": null
+          },
+          {
+            "name": "Breece Hall",
+            "position": "RB",
+            "team": "NYJ",
+            "bye_week": 13,
+            "projected_points": 216.2,
+            "projected_ppg": 12.7,
+            "value_over_replacement": 82.9,
+            "tier": 2,
+            "injury_status": null
+          },
+          {
+            "name": "Garrett Wilson",
+            "position": "WR",
+            "team": "NYJ",
+            "bye_week": 13,
+            "projected_points": 174.5,
+            "projected_ppg": 10.3,
+            "value_over_replacement": 35.9,
+            "tier": 2,
+            "injury_status": null
+          },
+          {
+            "name": "J.K. Dobbins",
+            "position": "RB",
+            "team": "DEN",
+            "bye_week": 10,
+            "projected_points": 159.3,
+            "projected_ppg": 9.4,
+            "value_over_replacement": 26.1,
+            "tier": 3,
+            "injury_status": "Questionable"
+          },
+          {
+            "name": "George Kittle",
+            "position": "TE",
+            "team": "SF",
+            "bye_week": 8,
+            "projected_points": 150.5,
+            "projected_ppg": 8.9,
+            "value_over_replacement": 55.0,
+            "tier": 1,
+            "injury_status": "Questionable"
+          },
+          {
+            "name": "Matthew Golden",
+            "position": "WR",
+            "team": "GB",
+            "bye_week": 11,
+            "projected_points": 137.2,
+            "projected_ppg": 8.1,
+            "value_over_replacement": -1.5,
+            "tier": 3,
+            "injury_status": null
+          },
+          {
+            "name": "Denzel Boston",
+            "position": "WR",
+            "team": "CLE",
+            "bye_week": 11,
+            "projected_points": 132.2,
+            "projected_ppg": 7.8,
+            "value_over_replacement": -6.4,
+            "tier": 3,
+            "injury_status": null
+          },
+          {
+            "name": "Rico Dowdle",
+            "position": "RB",
+            "team": "PIT",
+            "bye_week": 9,
+            "projected_points": 129.2,
+            "projected_ppg": 7.6,
+            "value_over_replacement": -4.0,
+            "tier": 4,
+            "injury_status": "Questionable"
+          },
+          {
+            "name": "Rachaad White",
+            "position": "RB",
+            "team": "WAS",
+            "bye_week": 7,
+            "projected_points": 122.1,
+            "projected_ppg": 7.2,
+            "value_over_replacement": -11.1,
+            "tier": 4,
+            "injury_status": null
+          },
+          {
+            "name": "Pittsburgh Steelers",
+            "position": "DEF",
+            "team": "PIT",
+            "bye_week": 9,
+            "projected_points": 115.1,
+            "projected_ppg": 6.8,
+            "value_over_replacement": 15.2,
+            "tier": 1,
+            "injury_status": null
+          },
+          {
+            "name": "Keon Coleman",
+            "position": "WR",
+            "team": "BUF",
+            "bye_week": 7,
+            "projected_points": 79.1,
+            "projected_ppg": 4.7,
+            "value_over_replacement": -59.5,
+            "tier": 5,
+            "injury_status": "Questionable"
+          }
+        ],
+        "unmatched_player_ids": [],
+        "open_starting_slots": {},
+        "summary": "all starting slots filled — drafting bench/upside now"
+      }
+    },
+    "league_overview": {
+      "structuredContent": {
+        "league_id": "0",
+        "name": "Sample League",
+        "season": "2026",
+        "status": "in_season",
+        "teams": 12,
+        "scoring": "half_ppr",
+        "superflex": false,
+        "starting_slots": [
+          "QB",
+          "RB",
+          "RB",
+          "WR",
+          "WR",
+          "TE",
+          "FLEX",
+          "FLEX",
+          "DEF"
+        ],
+        "bench_slots": 5,
+        "rosters": [
+          {
+            "roster_id": 1,
+            "team": "Team 1",
+            "owner": null,
+            "record": "1-1",
+            "players": 14
+          },
+          {
+            "roster_id": 2,
+            "team": "Team 2",
+            "owner": null,
+            "record": "1-1",
+            "players": 15
+          },
+          {
+            "roster_id": 3,
+            "team": "Team 3",
+            "owner": null,
+            "record": "0-2",
+            "players": 15
+          },
+          {
+            "roster_id": 4,
+            "team": "Team 4",
+            "owner": null,
+            "record": "0-2",
+            "players": 16
+          },
+          {
+            "roster_id": 5,
+            "team": "Team 5",
+            "owner": null,
+            "record": "1-1",
+            "players": 14
+          },
+          {
+            "roster_id": 6,
+            "team": "Sample Squad",
+            "owner": null,
+            "record": "2-0",
+            "players": 14
+          },
+          {
+            "roster_id": 7,
+            "team": "Team 6",
+            "owner": null,
+            "record": "2-0",
+            "players": 15
+          },
+          {
+            "roster_id": 8,
+            "team": "Team 7",
+            "owner": null,
+            "record": "2-0",
+            "players": 16
+          },
+          {
+            "roster_id": 9,
+            "team": "Team 8",
+            "owner": null,
+            "record": "0-2",
+            "players": 15
+          },
+          {
+            "roster_id": 10,
+            "team": "Team 9",
+            "owner": null,
+            "record": "2-0",
+            "players": 15
+          },
+          {
+            "roster_id": 11,
+            "team": "Team 10",
+            "owner": null,
+            "record": "0-2",
+            "players": 15
+          },
+          {
+            "roster_id": 12,
+            "team": "Team 11",
+            "owner": null,
+            "record": "1-1",
+            "players": 14
+          }
+        ]
+      }
+    },
+    "power_rankings": {
+      "structuredContent": {
+        "view": "league_overview",
+        "state": "ok",
+        "league": "Sample League",
+        "week": 3,
+        "generatedAt": "As of Fri 13:31 UTC",
+        "rankings": [
+          {
+            "rank": 1,
+            "delta": "▲2",
+            "team": "Team 6",
+            "record": "2-0",
+            "pf": "271.0",
+            "why": "2-0 through 2, 1st in PF, +90.0 point differential"
+          },
+          {
+            "rank": 2,
+            "delta": "▲2",
+            "team": "Sample Squad",
+            "record": "2-0",
+            "pf": "260.0",
+            "why": "2-0 through 2, 2nd in PF, +42.0 point differential"
+          },
+          {
+            "rank": 3,
+            "delta": "▼2",
+            "team": "Team 9",
+            "record": "2-0",
+            "pf": "253.0",
+            "why": "2-0 through 2, 3rd in PF, +32.0 point differential"
+          },
+          {
+            "rank": 4,
+            "delta": "▲2",
+            "team": "Team 7",
+            "record": "2-0",
+            "pf": "193.0",
+            "why": "2-0 through 2, 9th in PF, +15.0 point differential"
+          },
+          {
+            "rank": 5,
+            "delta": "▼3",
+            "team": "Team 1",
+            "record": "1-1",
+            "pf": "231.0",
+            "why": "1-1 through 2, 4th in PF, +45.0 point differential"
+          },
+          {
+            "rank": 6,
+            "delta": "▲1",
+            "team": "Team 5",
+            "record": "1-1",
+            "pf": "227.0",
+            "why": "1-1 through 2, 6th in PF, +14.0 point differential"
+          },
+          {
+            "rank": 7,
+            "delta": "▼2",
+            "team": "Team 2",
+            "record": "1-1",
+            "pf": "211.0",
+            "why": "1-1 through 2, 7th in PF, -3.0 point differential"
+          },
+          {
+            "rank": 8,
+            "delta": "▲4",
+            "team": "Team 11",
+            "record": "1-1",
+            "pf": "166.0",
+            "why": "1-1 through 2, 11th in PF, -48.0 point differential"
+          },
+          {
+            "rank": 9,
+            "delta": "▼1",
+            "team": "Team 3",
+            "record": "0-2",
+            "pf": "229.0",
+            "why": "0-2 through 2, 5th in PF, -27.0 point differential"
+          },
+          {
+            "rank": 10,
+            "delta": "—",
+            "team": "Team 8",
+            "record": "0-2",
+            "pf": "209.0",
+            "why": "0-2 through 2, 8th in PF, -38.0 point differential"
+          },
+          {
+            "rank": 11,
+            "delta": "▼2",
+            "team": "Team 4",
+            "record": "0-2",
+            "pf": "187.0",
+            "why": "0-2 through 2, 10th in PF, -27.0 point differential"
+          },
+          {
+            "rank": 12,
+            "delta": "▼1",
+            "team": "Team 10",
+            "record": "0-2",
+            "pf": "146.0",
+            "why": "0-2 through 2, 12th in PF, -95.0 point differential"
+          }
+        ],
+        "headlines": [
+          {
+            "kind": "Biggest win",
+            "title": "[headline]",
+            "line": "98.3 to 62.8 — widest margin of the week."
+          },
+          {
+            "kind": "Closest game",
+            "title": "[headline]",
+            "line": "3.9 points in it, 90.9 to 86.9."
+          },
+          {
+            "kind": "Top score",
+            "title": "[headline]",
+            "line": "Highest single-team total on the board this week."
+          }
+        ]
+      }
+    },
+    "matchup_preview": {
+      "structuredContent": {
+        "view": "matchup_preview",
+        "state": "ok",
+        "league": "Sample League",
+        "week": 3,
+        "generatedAt": "Live · Fri 13:31 UTC",
+        "mode": "live",
+        "home": {
+          "team": "Sample Squad",
+          "prob": 67,
+          "proj": "121.0",
+          "players": [
+            {
+              "name": "Brock Purdy",
+              "pos": "QB",
+              "proj": "20.8",
+              "swing": true,
+              "tag": "",
+              "locked": false
+            },
+            {
+              "name": "Kenneth Walker III",
+              "pos": "RB",
+              "proj": "19.3",
+              "swing": true,
+              "tag": "",
+              "locked": false
+            },
+            {
+              "name": "Jaxon Smith-Njigba",
+              "pos": "WR",
+              "proj": "17.2",
+              "swing": true,
+              "tag": "",
+              "locked": false
+            }
+          ]
+        },
+        "away": {
+          "team": "Team 7",
+          "prob": 33,
+          "proj": "113.5",
+          "players": [
+            {
+              "name": "Jalen Hurts",
+              "pos": "QB",
+              "proj": "19.8",
+              "swing": true,
+              "tag": "",
+              "locked": false
+            },
+            {
+              "name": "De'Von Achane",
+              "pos": "RB",
+              "proj": "17.3",
+              "swing": true,
+              "tag": "",
+              "locked": false
+            },
+            {
+              "name": "Amon-Ra St. Brown",
+              "pos": "WR",
+              "proj": "16.2",
+              "swing": true,
+              "tag": "",
+              "locked": false
+            }
+          ]
+        },
+        "call": "Sample Squad lead 18.5–0.0 with 8 of 9 starters still to play.",
+        "final": null,
+        "points_so_far": {
+          "home_pts": 18.5,
+          "away_pts": 0.0
+        },
+        "remaining_projection": {
+          "home": 111.5,
+          "away": 113.5
+        },
+        "projected_final": {
+          "home": 130.0,
+          "away": 113.5
+        },
+        "still_to_play": {
+          "home": 8,
+          "away": 9
+        }
+      }
+    },
+    "waiver_board": {
+      "structuredContent": {
+        "view": "waiver_board",
+        "state": "ok",
+        "league": "Sample League",
+        "week": 3,
+        "processAt": "Claims process Tuesday",
+        "faabLeft": "[amount]",
+        "faabPct": 99,
+        "faabNote": "[amount]",
+        "board": [
+          {
+            "rank": 1,
+            "name": "Keenan Allen",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "25%",
+            "chip": "Top claim",
+            "why": "27 pts better than Keon Coleman over the rest of the season (6.2 vs 4.7 per game)"
+          },
+          {
+            "rank": 2,
+            "name": "Malachi Fields",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "14%",
+            "chip": "",
+            "why": "22 pts better than Keon Coleman over the rest of the season (5.9 vs 4.7 per game)"
+          },
+          {
+            "rank": 3,
+            "name": "Ryan Flournoy",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "9%",
+            "chip": "",
+            "why": "18 pts better than Keon Coleman over the rest of the season (5.7 vs 4.7 per game)"
+          },
+          {
+            "rank": 4,
+            "name": "Alec Pierce",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "6%",
+            "chip": "",
+            "why": "15 pts better than Keon Coleman over the rest of the season (5.5 vs 4.7 per game)"
+          },
+          {
+            "rank": 5,
+            "name": "Rashod Bateman",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "5%",
+            "chip": "",
+            "why": "15 pts better than Keon Coleman over the rest of the season (5.5 vs 4.7 per game)"
+          },
+          {
+            "rank": 6,
+            "name": "Tre' Harris",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "3%",
+            "chip": "",
+            "why": "11 pts better than Keon Coleman over the rest of the season (5.3 vs 4.7 per game)"
+          },
+          {
+            "rank": 7,
+            "name": "Xavier Hutchinson",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "2%",
+            "chip": "",
+            "why": "9 pts better than Keon Coleman over the rest of the season (5.2 vs 4.7 per game)"
+          },
+          {
+            "rank": 8,
+            "name": "Roman Wilson",
+            "pos": "WR",
+            "ros": "—",
+            "bid": "[amount]",
+            "bidPct": "1%",
+            "chip": "",
+            "why": "4 pts better than Keon Coleman over the rest of the season (4.9 vs 4.7 per game)"
+          }
+        ],
+        "drops": [
+          {
+            "order": "first",
+            "name": "Keon Coleman",
+            "pos": "WR",
+            "why": "4.7 projected per game, lowest on the roster."
+          },
+          {
+            "order": "second",
+            "name": "Pittsburgh Steelers",
+            "pos": "DEF",
+            "why": "6.8 projected per game — the next one down."
+          }
+        ],
+        "call": "One claim, not three — spend [amount] on Keenan Allen and keep the rest for the bye weeks."
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
-// Display, touch and expander bring-up. Ported from Margin (margin, firmware/src/main.cpp,
-// commit 1b49136), which is verified on this board. The Arduino_GFX CO5300 driver is the vendored
+// Display, touch and expander bring-up. Ported from Margin (the author's earlier firmware
+// for this board, firmware/src/main.cpp @ 1b49136), which is verified on this board. The Arduino_GFX CO5300 driver is the vendored
 // Waveshare copy in lib/waveshare-gfx (see its PROVENANCE.md).
 #include "display.h"
 

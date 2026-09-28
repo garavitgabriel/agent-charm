@@ -8,6 +8,8 @@ import contextlib
 import hmac
 import json
 import logging
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
 from datetime import datetime
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
@@ -21,10 +23,11 @@ from . import protocol as p
 from .agent import Agent, HermesAgent
 from .books import BookStore
 from .cards import CardValidator
-from .coach import COACH_TIMEOUT_SECONDS, CoachDesk, ContainerLedger
-from .config import Config
+from .coach import COACH_TIMEOUT_SECONDS, CoachDesk, ContainerLedger, Ledger
+from .config import AGENT_BACKENDS, Config
 from .hermes import HermesChannel
 from .notestore import make_store
+from .openai_compat import OpenAICompatAgent
 from .session import Deps, Session
 from .stt import WhisperSTT
 from .tts import EdgeTTS
@@ -118,18 +121,59 @@ async def start(deps: Deps, host: str, port: int) -> Server:
     )
 
 
-async def run(config: Config, warm: bool) -> None:
-    stt = WhisperSTT(config.whisper_model)
-    channel: HermesChannel | None = None
-    agent: Agent
+@dataclass
+class Agents:
+    """The agents one server talks to, built from the config (`CHARM_AGENT`)."""
+
+    dex: Agent
+    coach: Agent | None = None
+    ledger: Ledger | None = None
+    describe: str = ""
+    warmups: list[Callable[[], Awaitable[object]]] = field(default_factory=list)
+    closers: list[Callable[[], Awaitable[None]]] = field(default_factory=list)
+
+
+def make_agents(config: Config) -> Agents:
+    """`openai`: any OpenAI-compatible endpoint. `hermes`: a Hermes container over SSH."""
+    backend = config.agent_backend
+    if backend == "openai":
+        if not config.agent_model:
+            raise SystemExit(
+                "CHARM_AGENT_MODEL is not set. Name the model your endpoint serves "
+                "(see server/.env.example), or set CHARM_AGENT=hermes."
+            )
+        dex = OpenAICompatAgent(
+            config.agent_model, config.agent_base_url, config.agent_api_key, name="Dex"
+        )
+        agents = Agents(dex=dex, describe=f"openai-compatible {config.agent_model}")
+        agents.closers.append(dex.close)
+        if config.coach_enabled:
+            coach = OpenAICompatAgent(
+                config.coach_model or config.agent_model,
+                config.agent_base_url,
+                config.agent_api_key,
+                timeout=COACH_TIMEOUT_SECONDS,
+                name="Coach",
+            )
+            agents.coach = coach
+            agents.closers.append(coach.close)
+        return agents
+    if backend != "hermes":
+        raise SystemExit(
+            f"Unknown CHARM_AGENT {backend!r}: use one of {', '.join(AGENT_BACKENDS)}."
+        )
     if config.hermes_channel:
         channel = HermesChannel(config.hermes_ssh_alias, config.hermes_container)
-        agent = channel
+        agents = Agents(dex=channel, describe="hermes persistent channel")
+        agents.warmups.append(channel.start)  # opens the SSH channel while Whisper loads
+        agents.closers.append(channel.close)
     else:
-        agent = HermesAgent(config.hermes_ssh_alias, config.hermes_container)
-    # Coach Beard: his own channel (same transport; his key read inside the container from his
-    # profile's .env, his port), his read-only ledger for the fast path, and his own voice.
-    coach_channel: HermesChannel | None = None
+        agents = Agents(
+            dex=HermesAgent(config.hermes_ssh_alias, config.hermes_container),
+            describe="hermes ssh per question",
+        )
+    # Coach Beard as a second Hermes profile: his own channel (same transport; his key read inside
+    # the container from his profile's .env, his port), his read-only ledger for the fast path.
     if config.coach_enabled:
         coach_channel = HermesChannel(
             config.hermes_ssh_alias,
@@ -139,33 +183,41 @@ async def run(config: Config, warm: bool) -> None:
             env_file=config.coach_env_path,
             port=config.coach_port,
         )
+        agents.coach = coach_channel
+        agents.warmups.append(coach_channel.start)
+        agents.closers.insert(0, coach_channel.close)
+        if config.coach_ledger_path:
+            agents.ledger = ContainerLedger(
+                config.hermes_ssh_alias, config.hermes_container, config.coach_ledger_path
+            )
+    return agents
+
+
+async def run(config: Config, warm: bool) -> None:
+    stt = WhisperSTT(config.whisper_model)
+    agents = make_agents(config)
     validator = CardValidator(config.schema_path)
     coach = CoachDesk(
-        coach_channel,
+        agents.coach,
         config.tz,
         path=config.coach_jobs_path,
-        ledger=ContainerLedger(
-            config.hermes_ssh_alias, config.hermes_container, config.coach_ledger_path
-        ),
+        ledger=agents.ledger,
         validate=validator.check,
+        persona=config.persona,
     )
     deps = Deps(
         config=config,
         stt=stt,
-        agent=agent,
+        agent=agents.dex,
         tts=EdgeTTS(config.voice_en, config.voice_es),
         validator=validator,
         books=BookStore(config.books_path),
-        notes=make_store(config.notes_backend),
+        notes=make_store(config.notes_backend, config.notes_dir),
         coach=coach,
         coach_tts=EdgeTTS(config.coach_voice_en, config.coach_voice_es),
     )
     try:
-        warmups = []
-        if channel is not None:
-            warmups.append(channel.start())  # opens the SSH channel to Dex while Whisper loads
-        if coach_channel is not None:
-            warmups.append(coach_channel.start())
+        warmups: list[Awaitable[object]] = [start() for start in agents.warmups]
         if warm:
             warmups.append(asyncio.to_thread(stt.load))
         await asyncio.gather(*warmups)
@@ -178,18 +230,16 @@ async def run(config: Config, warm: bool) -> None:
                 config.port,
                 p.PATH,
                 config.cards_dir,
-                "persistent channel" if channel else "ssh per question",
+                agents.describe,
                 config.notes_backend,
                 deps.books.mode,
-                f"port {config.coach_port}" if coach_channel else "off",
+                "on" if agents.coach is not None else "off",
             )
             await server.serve_forever()
     finally:
         await coach.close()
-        if coach_channel is not None:
-            await coach_channel.close()
-        if channel is not None:
-            await channel.close()
+        for close in agents.closers:
+            await close()
 
 
 def main() -> None:

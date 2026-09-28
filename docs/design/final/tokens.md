@@ -38,7 +38,7 @@ Each candidate has three steps. The base is used for UI. The side-plane and high
 | `ACC_L` (highlight) | `#F9DC94` |
 | `ACC_N` (night) | `#5E4A1C` |
 
-Rejected candidates, kept for reference (see `accent-compare.html`, `accent-a.png`, `accent-c.png`):
+Rejected candidates, kept for reference (see `docs/internal/design-sprint/accents/`):
 
 | Candidate | Base | Side plane | Highlight |
 |---|---|---|---|
@@ -59,7 +59,7 @@ Character colours are locked and taken from `dex.py` `PAL`. The UI uses no other
 | Size | Weight | Role |
 |---|---|---|
 | 40 | 500 | The money total only (`$58.400`). The largest text anywhere. |
-| 32 | 500 / 600 | Headline (the spoken line). The tracker's current stop. On the money screens: "COP" (set on the total's row), "Hold Dex to order" and "Ordering…" (600, accent, 36 px line height). |
+| 32 | 500 / 600 | Headline (the spoken line). The tracker's current stop. On the money screens: the currency code (set on the total's row), "Hold Dex to order" and "Ordering…" (600, accent, 36 px line height). |
 | 24 | 500 / 600 | Answer rows, Done second line. All other actions (600). |
 | 18 | 400 / 500 | Secondary text (FG2, 400). The money merchant name (FG, 500). |
 

@@ -1,0 +1,28 @@
+{
+  "id": "ed-waiting",
+  "kind": "edition",
+  "title": "Waiting on you",
+  "source": "dex",
+  "data": {
+    "section": "waiting",
+    "rows": [
+      {
+        "text": "You still owe a check that both account notices are legitimate, in the…"
+      },
+      {
+        "text": "The garden-sensor build stays open until the device install and the offline…"
+      },
+      {
+        "text": "The recipe app should not get another paid test run before its report is…"
+      },
+      {
+        "text": "Four old approval cards, 40 to 134 days old, still wait for a close-or-keep…"
+      }
+    ]
+  },
+  "body": "4 things waiting on you.",
+  "stale": true,
+  "footer": "Digest desk missed deadline — last filed Thu 22:33",
+  "created_at": "2026-09-25T03:33:19+00:00",
+  "fresh_until": "2026-09-25T15:00:00+00:00"
+}

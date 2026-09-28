@@ -1,12 +1,12 @@
 """The per-book reading session, kept in a gitignored JSON file (`server/.local/books.json`).
 
-One file per server. It remembers which book the owner is reading, the chapter he's on, the last
+One file per server. It remembers which book the owner is reading, the chapter they're on, the last
 `TURNS_PER_BOOK` questions and answers for each book, and the speech toggle, so reading mode
 survives reconnects and server restarts. Switching books switches the context: each book keeps
 its own chapter and turns.
 
-The file holds the owner's own questions about his books, so it lives under `.local/` (gitignored),
-never in the repo.
+The file holds the owner's own questions about their books, so it lives under `.local/`
+(gitignored), never in the repo.
 """
 
 from __future__ import annotations

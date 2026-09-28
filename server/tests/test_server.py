@@ -72,7 +72,7 @@ async def test_welcome_then_idle(harness: Harness) -> None:
     welcome = json.loads(await ws.recv())
     assert welcome["type"] == "welcome"
     assert welcome["server"] == SERVER_ID and "proto/0" in welcome["server"]
-    assert welcome["tz"] == "America/Chicago" and "T" in welcome["time"]
+    assert welcome["tz"] == "America/Lima" and "T" in welcome["time"]
     assert json.loads(await ws.recv()) == {"type": "state", "value": "idle", "agent": "dex"}
 
 

@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in the server, simulator, firmware or asset tools doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please **remove tokens, Wi-Fi passwords, API keys and personal data** from logs before pasting.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [server, simulator, firmware, feeds, notes, asset tools, docs]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: Commands you ran, from a fresh checkout if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Server log (`-v`), sim stderr or the serial monitor. Redact secrets.
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "macOS 15 / Ubuntu 24.04, commit abc1234, CHARM_AGENT=openai (Ollama)"

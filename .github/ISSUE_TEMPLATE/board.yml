@@ -1,0 +1,34 @@
+name: Board / hardware report
+description: Bring-up results on a device, or support for another board.
+labels: [hardware]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The supported board is the Waveshare **ESP32-S3-Touch-AMOLED-1.8 V2** (CO5300 + CST820).
+        V1 boards (SH8601/FT3168) are not supported. Work through `firmware/HARDWARE-TEST.md` first.
+  - type: input
+    id: board
+    attributes:
+      label: Board and revision
+      placeholder: "ESP32-S3-Touch-AMOLED-1.8 V2, bought 2026-10"
+    validations:
+      required: true
+  - type: textarea
+    id: boot
+    attributes:
+      label: Boot line
+      description: The `[charm] touch=… audio=… imu=… pmu=… psram=…` line from `pio device monitor -b 115200`.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: HARDWARE-TEST.md results
+      description: Which of the 20 checks passed or failed, with log excerpts (secrets redacted).
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Battery, enclosure, a different board you'd like supported, photos.

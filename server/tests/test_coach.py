@@ -32,7 +32,7 @@ from charm_server.hermes import COACH_ENV_FILE, COACH_PORT, ssh_command, worker_
 
 from .conftest import FakeAgent
 
-TZ = "America/Chicago"
+TZ = "America/Lima"
 
 CALL_REPLY = (
     "Keep Purdy in. Maye has one touchdown and six picks through three games, and Buffalo is "
@@ -189,9 +189,7 @@ async def test_container_ledger_is_a_read_only_tail() -> None:
     ledger = ContainerLedger("hermes", "hermes-agent", "/opt/x/decisions.jsonl")
     command = ledger._command()
     assert command[0] == "ssh" and command[-2] == "hermes"
-    assert command[-1] == (
-        "docker exec hermes-agent tail -n 200 /opt/x/decisions.jsonl"
-    )
+    assert command[-1] == ("docker exec hermes-agent tail -n 200 /opt/x/decisions.jsonl")
     local = ContainerLedger("local", "c", "/p")._command()
     assert local == ["docker", "exec", "c", "tail", "-n", "200", "/p"]
     ok = ContainerLedger("x", "c", "/p", command=[sys.executable, "-c", "print('line')"])
@@ -226,7 +224,7 @@ def test_config_reads_the_coach_env(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     for name in ("COACH_ENABLED", "COACH_ENV_PATH", "COACH_PORT", "CHARM_VOICE_COACH_EN"):
         monkeypatch.delenv(name)
     config = Config.from_env(env_file=None)
-    assert config.coach_enabled is True
+    assert config.coach_enabled is False  # an optional second agent: off unless switched on
     assert (config.coach_env_path, config.coach_port) == ("/opt/data/profiles/coach/.env", 8644)
     assert config.coach_voice_en != config.voice_en and config.coach_voice_es != config.voice_es
 

@@ -13,15 +13,17 @@ From the repo root:
 scripts/demo.sh
 ```
 
-Needs `uv`, `cmake`, `ffmpeg`, SDL2 (`sdl2-compat`, see [`sim/README.md`](../sim/README.md)) and the
-`hermes` SSH alias (the one Margin uses). What it does:
+Needs `uv`, `cmake`, `ffmpeg`, SDL2 (`sdl2-compat`, see [`sim/README.md`](../sim/README.md)) and an
+agent backend in `server/.env` (`CHARM_AGENT_BASE_URL` + `CHARM_AGENT_MODEL`, e.g. a local Ollama;
+see [`server/README.md`](../server/README.md)). What it does:
 
 1. **Token.** Makes sure `server/.env` exists (copied from `.env.example`) and has a `CHARM_TOKEN`. If
    it's empty, it writes a random one. The file is gitignored and `chmod 600`; the script prints only
    the first 4 characters.
-2. **Cards.** `charm-feeds pull && charm-feeds build` into `out/cards` (gitignored): read-only copies of
-   Dex's desk feeds, turned into the pocket edition. If that fails (no network, SSH down), it says
-   so and uses `feeds/fixtures/cards`. Log: `out/demo/feeds.log`.
+2. **Cards.** The pocket edition comes from `feeds/fixtures/cards` (synthetic). With `--pull` it
+   first runs `charm-feeds pull && charm-feeds build` into `out/cards` (gitignored): read-only
+   copies of a Hermes agent's desk feeds (see [`feeds/README.md`](../feeds/README.md)). If that fails,
+   it says so and uses the fixtures. Log: `out/demo/feeds.log`.
 3. **Server.** `charm-server` on `127.0.0.1:8765` (or `CHARM_PORT`) with `CHARM_CARDS_DIR` pointed at
    those cards. It loads Whisper first (a few seconds). Log: `out/demo/server.log`, which also has
    each talk's `talk timings stt=… agent=… tts=… total=…`.
@@ -30,7 +32,7 @@ Needs `uv`, `cmake`, `ffmpeg`, SDL2 (`sdl2-compat`, see [`sim/README.md`](../sim
 
 **Ctrl-C** in the terminal, or closing the sim window (Esc / q), stops the sim and the server.
 
-Flags: `--no-pull` skips the feeds pull and uses the fixture cards. Anything else goes to `charm-sim`,
+Flags: `--pull` refreshes the edition from a Hermes desk first. Anything else goes to `charm-sim`,
 for example a scripted question with its timings:
 
 ```sh

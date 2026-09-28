@@ -1,8 +1,11 @@
 """Coach Beard on the charm: his persona appendix, his cards, his ledger and his walk-away jobs.
 
-Coach is the `coach` Hermes profile, reached over his own `HermesChannel` (port 8644, key read
-inside the container from his profile's `.env`). His Hermes config enforces a read-only toolset;
-the persona below says so too. See docs/PROTOCOL.md § Agents.
+Coach is an optional second agent: an example of giving the charm more than one character. With
+`CHARM_AGENT=hermes` he's a separate Hermes profile reached over his own `HermesChannel` (his own
+port and key file inside the container; his profile's config can enforce a read-only toolset).
+With `CHARM_AGENT=openai` he's the same OpenAI-compatible endpoint with his own persona and,
+optionally, his own model. The persona below asks for read-only either way. See
+docs/PROTOCOL.md § Agents and docs/COACH.md.
 
 - `coach_messages` / `parse_reply`: the charm format, and his reply → a **call** (a `decision` card
   from `source:"coach"`) when it carries a verdict line, else an answer card.
@@ -30,7 +33,15 @@ from pathlib import Path
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
-from .agent import LANGUAGE_NAMES, Agent, AgentError, AgentTimeout, Message
+from .agent import (
+    DEFAULT_PERSONA,
+    LANGUAGE_NAMES,
+    Agent,
+    AgentError,
+    AgentTimeout,
+    Message,
+    Persona,
+)
 from .cards import (
     ANSWER_MAX_WORDS,
     BODY_MAX_CHARS,
@@ -58,25 +69,38 @@ ACTION_LABELS = {
     "es": {"hear": "Escuchar", "why": "¿Por qué?", "later": "Luego"},
 }
 
-COACH_PERSONA = (
-    "You are Coach Beard, answering through the Dex Charm: a small pocket device with a tiny "
-    "screen and a speaker, which the owner puts down while you work and picks up later. Your tools "
-    "on this channel are read-only (your Hermes config enforces it): research, Zone Read and your "
-    "local NFL data. You never set a lineup, file a claim, make a trade or message anyone from "
-    "here; if something needs doing, say what the owner should do. Answer in plain text with no "
-    "markdown, lists, labels or emoji. Lead with the call. At most 60 words; the first two "
-    "sentences are spoken aloud, so they must stand alone. Reply in the language of the "
-    "question. Never invent a stat, an injury designation or a time. "
-    "When your answer is a decision (start/sit, add/drop, a trade, hold), end with ONE extra "
-    "line for the device, exactly: "
-    "CALL: <the verdict in at most 6 words> | BY: <the lock or deadline in Chicago time, like "
-    "Sun 12:00> | FLIP: <the one fact that flips it, at most 12 words>. "
-    "Leave that line out when there is no decision."
-)
+
+def coach_persona(persona: Persona = DEFAULT_PERSONA, tz: str = "") -> str:
+    """Coach's charm persona. `tz` names the zone his deadlines are given in."""
+    who = persona.owner.strip() or "your manager"
+    zone = f"{tz} time" if tz else "local time"
+    return (
+        "You are Coach Beard, a fantasy-football coach, answering through the Dex Charm: a small "
+        f"pocket device with a tiny screen and a speaker, which {who} puts down while you work "
+        "and picks up later. Your tools on this channel are read-only: research and your "
+        "fantasy and NFL data. You never set a lineup, file a claim, make a trade or message "
+        f"anyone from here; if something needs doing, say what {who} should do. Answer in plain "
+        "text with no markdown, lists, labels or emoji. Lead with the call. At most 60 words; "
+        "the first two sentences are spoken aloud, so they must stand alone. Reply in the "
+        "language of the question. Never invent a stat, an injury designation or a time. "
+        "When your answer is a decision (start/sit, add/drop, a trade, hold), end with ONE extra "
+        "line for the device, exactly: "
+        f"CALL: <the verdict in at most 6 words> | BY: <the lock or deadline in {zone}, like "
+        "Sun 12:00> | FLIP: <the one fact that flips it, at most 12 words>. "
+        "Leave that line out when there is no decision."
+    )
 
 
-def coach_messages(language: str, history: Sequence[Message]) -> list[Message]:
-    messages: list[Message] = [{"role": "system", "content": COACH_PERSONA}]
+COACH_PERSONA = coach_persona()
+
+
+def coach_messages(
+    language: str,
+    history: Sequence[Message],
+    persona: Persona = DEFAULT_PERSONA,
+    tz: str = "",
+) -> list[Message]:
+    messages: list[Message] = [{"role": "system", "content": coach_persona(persona, tz)}]
     name = LANGUAGE_NAMES.get(language)
     if name:
         messages.append({"role": "system", "content": f"The question was spoken in {name}."})
@@ -492,9 +516,11 @@ class CoachDesk:
         timeout: float = COACH_TIMEOUT_SECONDS,
         ledger: Ledger | None = None,
         validate: Callable[[Card], Card] | None = None,
+        persona: Persona = DEFAULT_PERSONA,
     ) -> None:
         self.agent = agent
         self.tz = tz
+        self.persona = persona
         self.path = path
         self.timeout = timeout
         self.ledger = ledger
@@ -542,7 +568,7 @@ class CoachDesk:
     async def _run(self, job: Job) -> None:
         assert self.agent is not None
         question: Message = {"role": "user", "content": job.question}
-        messages = [*coach_messages(job.language, self.history), question]
+        messages = [*coach_messages(job.language, self.history, self.persona, self.tz), question]
         delivery: Delivery
         try:
             async with asyncio.timeout(self.timeout):

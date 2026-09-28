@@ -72,7 +72,7 @@ def test_title_comes_from_the_question() -> None:
 
 
 def test_short_answer_card(validator: CardValidator) -> None:
-    card = answer_card("what?", "Short **answer**.", "en", "America/Chicago")
+    card = answer_card("what?", "Short **answer**.", "en", "America/Lima")
     validator.check(card)
     assert card["body"] == "Short answer." and "footer" not in card
     assert card["id"].startswith("ans-") and card["source"] == "dex"
@@ -80,7 +80,7 @@ def test_short_answer_card(validator: CardValidator) -> None:
 
 @pytest.mark.parametrize("language", ["en", "es"])
 def test_long_answer_card_is_truncated(validator: CardValidator, language: str) -> None:
-    card = answer_card("q", "palabra " * 100, language, "America/Chicago")
+    card = answer_card("q", "palabra " * 100, language, "America/Lima")
     validator.check(card)
     assert len(card["body"].split()) <= 60 and card["body"].endswith("…")
     assert card["footer"] == (
@@ -91,7 +91,7 @@ def test_long_answer_card_is_truncated(validator: CardValidator, language: str) 
 
 
 def test_answer_card_char_cap(validator: CardValidator) -> None:
-    card = answer_card("q", " ".join(["supercalifragilistic"] * 59), "en", "America/Chicago")
+    card = answer_card("q", " ".join(["supercalifragilistic"] * 59), "en", "America/Lima")
     validator.check(card)
     assert len(card["body"]) <= 420 and "footer" in card
 

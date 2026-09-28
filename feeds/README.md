@@ -23,7 +23,7 @@ uv run ruff check . && uv run mypy src && uv run pytest -q
 |---|---|---|
 | `--src DIR` | `.cache/` | Directory of pulled feeds. |
 | `--now ISO` | the current time | Time to judge freshness at. It needs an offset. |
-| `--tz ZONE` | `America/Chicago` | Zone for the weekday and "last filed" stamps. |
+| `--tz ZONE` | `$CHARM_TZ`, else `UTC` | Zone for the weekday and "last filed" stamps. |
 | `--schema FILE` | `../contract/card.schema.json` (or `CHARM_CARD_SCHEMA`) | Card schema to validate against. |
 
 Every card is validated before anything is written. A build then replaces the `NN-*.json` files

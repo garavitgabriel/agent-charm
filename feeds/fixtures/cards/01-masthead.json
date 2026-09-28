@@ -1,0 +1,42 @@
+{
+  "id": "ed-masthead",
+  "kind": "edition",
+  "title": "Friday edition",
+  "source": "edition",
+  "data": {
+    "section": "masthead",
+    "rows": [
+      {
+        "text": "Sports desk · filed",
+        "stamp": "Fri 08:31"
+      },
+      {
+        "text": "Almanac desk · filed",
+        "stamp": "Fri 08:00"
+      },
+      {
+        "text": "Digest desk · missed deadline",
+        "stamp": "Thu 22:33"
+      },
+      {
+        "text": "Radar desk · missed deadline",
+        "stamp": "Sun 14:02"
+      },
+      {
+        "text": "Paper desk · filed",
+        "stamp": "Fri 11:14"
+      }
+    ],
+    "tiles": [
+      {
+        "value": "3 of 5",
+        "label": "Desks fresh"
+      }
+    ]
+  },
+  "body": "Two account notices need a look, and the garden-sensor build is signed but not yet proven on the device.",
+  "stale": true,
+  "footer": "Digest desk missed deadline — last filed Thu 22:33",
+  "created_at": "2026-09-25T17:30:00+00:00",
+  "fresh_until": "2026-09-25T21:31:01+00:00"
+}

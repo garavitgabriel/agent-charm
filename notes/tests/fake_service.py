@@ -1,4 +1,4 @@
-"""A local fake of the OS knowledge service (gabe-os-service): scripted replies, recorded requests."""
+"""A local fake of the OS knowledge service : scripted replies, recorded requests."""
 from __future__ import annotations
 
 import threading

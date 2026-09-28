@@ -6,7 +6,7 @@
   "Estoy leyendo Cien años de soledad, capítulo 3".
 - `SetChapter`: "I'm on chapter 4" / "Voy en el capítulo 4" (reading mode only).
 - `LeaveReading`: "Stop reading" / "Deja de leer".
-- `SaveThought`: "Save this: …" / "Guarda esto: …". The text is the owner's words after the
+- `SaveThought`: "Save this: …" / "Guarda esto: …". The text is the speaker's words after the
   trigger, **verbatim**: only the trigger words (and the separator after them) are removed.
 - `SetSpeech`: "Voice on" / "Be quiet" / "Activa la voz" / "Silencio".
 

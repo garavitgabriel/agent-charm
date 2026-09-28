@@ -46,7 +46,7 @@
     "source": {
       "type": "string",
       "maxLength": 24,
-      "description": "Who produced it: dex, coach, delivery, edition, github, other, system"
+      "description": "Who produced it, e.g. dex, coach, delivery, edition, github, system"
     },
     "created_at": {
       "type": "string",

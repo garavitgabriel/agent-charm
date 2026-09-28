@@ -1,0 +1,257 @@
+{
+  "generated_at": "2026-09-25T16:14:19+00:00",
+  "account": "redacted@example.invalid",
+  "window": "newer_than:1d",
+  "calendar": "primary, 3 days",
+  "life": [
+    {
+      "from": "[personal sender]",
+      "subject": "[personal mail]",
+      "date": "2026-09-25 01:04",
+      "labels": [
+        "UNREAD",
+        "Paper/Life",
+        "IMPORTANT",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[personal sender]",
+      "subject": "[personal mail]",
+      "date": "2026-09-24 23:55",
+      "labels": [
+        "Paper/Life",
+        "IMPORTANT",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[personal sender]",
+      "subject": "[personal mail]",
+      "date": "2026-09-24 23:54",
+      "labels": [
+        "Paper/Life",
+        "IMPORTANT",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[personal sender]",
+      "subject": "[personal mail]",
+      "date": "2026-09-24 19:36",
+      "labels": [
+        "Paper/Life",
+        "IMPORTANT",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[personal sender]",
+      "subject": "[personal mail]",
+      "date": "2026-09-24 18:42",
+      "labels": [
+        "UNREAD",
+        "Paper/Life",
+        "IMPORTANT",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[personal sender]",
+      "subject": "[personal mail]",
+      "date": "2026-09-24 16:39",
+      "labels": [
+        "Paper/Life",
+        "IMPORTANT",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[personal sender]",
+      "subject": "[personal mail]",
+      "date": "2026-09-24 16:26",
+      "labels": [
+        "UNREAD",
+        "Paper/Life",
+        "IMPORTANT",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    }
+  ],
+  "reading": [
+    {
+      "from": "[sender]",
+      "subject": "How small teams ship reliable hardware",
+      "date": "2026-09-25 14:38",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "☕ Two model launches on the same day",
+      "date": "2026-09-25 14:07",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "⚙️ A big company finds its lane in AI",
+      "date": "2026-09-25 12:35",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "A note on this newsletter's pricing",
+      "date": "2026-09-25 12:11",
+      "labels": [
+        "Paper/Reading",
+        "CATEGORY_PROMOTIONS",
+        "UNREAD",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "😺 Can a charm sell you something?",
+      "date": "2026-09-25 09:30",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "How to build a referral program (and know when you're not ready)",
+      "date": "2026-09-25 09:01",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "[Weekly] The future of on-device models",
+      "date": "2026-09-25 05:37",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "Real-time worlds and the engineering behind them",
+      "date": "2026-09-25 01:30",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "Why systems thinking matters for growth",
+      "date": "2026-09-24 21:55",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "How product teams measure AI fluency",
+      "date": "2026-09-24 22:05",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "What it's like to work at an AI-native company",
+      "date": "2026-09-24 18:09",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "Weekly reading #12",
+      "date": "2026-09-24 17:58",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "Weekly reading #13",
+      "date": "2026-09-24 17:26",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "Weekly reading #14",
+      "date": "2026-09-24 17:08",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    },
+    {
+      "from": "[sender]",
+      "subject": "Weekly reading #15",
+      "date": "2026-09-24 16:45",
+      "labels": [
+        "Paper/Reading",
+        "UNREAD",
+        "CATEGORY_UPDATES",
+        "INBOX"
+      ]
+    }
+  ],
+  "events": [],
+  "errors": {}
+}

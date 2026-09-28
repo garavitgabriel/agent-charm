@@ -16,7 +16,7 @@ from charm_feeds.text import parse_time
 
 FEEDS_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CACHE = FEEDS_ROOT / ".cache"
-DEFAULT_TZ = "America/Chicago"
+DEFAULT_TZ = os.environ.get("CHARM_TZ") or "UTC"
 
 
 def _now(value: str | None) -> datetime:

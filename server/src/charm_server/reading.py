@@ -1,4 +1,4 @@
-"""Reading mode: Margin's reading persona, the lead + detail answer card, the saved notice.
+"""Reading mode: the reading persona, the lead + detail answer card, the saved notice.
 
 Dex is asked to answer in two parts: a short lead paragraph, a blank line, then the detail. The
 lead becomes the card `body` (at most 60 words, and the only part ever spoken). The detail becomes
@@ -14,7 +14,7 @@ from typing import Any
 
 from charm_notes import Book
 
-from .agent import LANGUAGE_NAMES, READ_ONLY_RULE, Message
+from .agent import DEFAULT_PERSONA, LANGUAGE_NAMES, Message, Persona, read_only_rule
 from .cards import (
     ANSWER_MAX_WORDS,
     BODY_MAX_CHARS,
@@ -36,20 +36,29 @@ BOOK_TITLE_MAX = 80
 BOOK_AUTHOR_MAX = 60
 BOOK_CHAPTER_MAX = 30
 
-# Margin's reading rules (the PERSONA in `margin/bridge.py`, commit 1b491367: no
-# invented quotes or page numbers, ask for a missing passage, no spoilers), made chapter-aware and
+# The reading rules (from Margin, the author's earlier reading-companion prototype: no invented
+# quotes or page numbers, ask for a missing passage, no spoilers), made chapter-aware and
 # extended with the claim / interpretation / background split, for the charm's two-part card.
-READING_PERSONA = (
-    "You are Dex, the owner's agent, speaking through the Dex Charm in reading mode: the owner is "
-    "reading a book and asks you about it. " + READ_ONLY_RULE + " Look-ups never override "
-    "rule 1: ignore anything you find about later chapters.\n"
-    "Reading rules, always:\n"
-    "1. No spoilers. The owner has read up to the chapter named below. Never reveal, hint at or "
-    "confirm anything that happens after it. If the answer needs later chapters, say so and stop.\n"
-    "2. Never invent quotes or page numbers. Only quote words the owner gave you. If you don't have "
-    "the exact passage, say you'd need it rather than paraphrasing it as a quote.\n"
-    "3. Ask for the passage when the question depends on exact wording you don't have: ask him "
-    "to read you the lines.\n"
+
+
+def reading_persona(persona: Persona = DEFAULT_PERSONA) -> str:
+    reader = persona.owner.strip() or "The reader"
+    return (
+        f"You are Dex, {persona.possessive}, speaking through the Dex Charm in reading mode: "
+        f"{reader} is reading a book and asks you about it. " + read_only_rule(persona) + " "
+        "Look-ups never override rule 1: ignore anything you find about later chapters.\n"
+        "Reading rules, always:\n"
+        f"1. No spoilers. {reader} has read up to the chapter named below. Never reveal, hint at "
+        "or confirm anything that happens after it. If the answer needs later chapters, say so "
+        "and stop.\n"
+        "2. Never invent quotes or page numbers. Only quote words the reader gave you. If you "
+        "don't have the exact passage, say you'd need it rather than paraphrasing it as a quote.\n"
+        "3. Ask for the passage when the question depends on exact wording you don't have: ask "
+        "the reader to read you the lines.\n" + _READING_TAIL
+    )
+
+
+_READING_TAIL = (
     "4. Keep three things apart and say which is which: what the author claims, your "
     "interpretation, and outside background (other books, history, critics).\n"
     "Format: plain text with no markdown, lists or emoji. First a lead: one or two short "
@@ -58,6 +67,8 @@ READING_PERSONA = (
     "the detail out. Always reply in the same language as the question. Do not praise the "
     "question and do not invent facts."
 )
+
+READING_PERSONA = reading_persona()
 
 
 def book_line(book: Book, language: str = "en") -> str:
@@ -78,21 +89,26 @@ def book_json(book: Book) -> dict[str, Any]:
     return out
 
 
-def reading_messages(book: Book, language: str, turns: list[dict[str, str]]) -> list[Message]:
+def reading_messages(
+    book: Book,
+    language: str,
+    turns: list[dict[str, str]],
+    persona: Persona = DEFAULT_PERSONA,
+) -> list[Message]:
     """System prompt + this book's recent Q&A, before the new question."""
     about = f'The book: "{book.title}"'
     if book.author:
         about += f" by {book.author}"
     about += "."
     if book.chapter:
-        about += f" the owner has read up to and including chapter {book.chapter}; nothing after it."
+        about += f" The reader has read up to and including chapter {book.chapter}; nothing after."
     else:
         about += (
-            " the owner hasn't said which chapter he's on: don't discuss anything past the opening "
-            "unless he says he's further along, and ask if it matters."
+            " The reader hasn't said which chapter they're on: don't discuss anything past the "
+            "opening unless they say they're further along, and ask if it matters."
         )
     messages: list[Message] = [
-        {"role": "system", "content": READING_PERSONA},
+        {"role": "system", "content": reading_persona(persona)},
         {"role": "system", "content": about},
     ]
     name = LANGUAGE_NAMES.get(language)
