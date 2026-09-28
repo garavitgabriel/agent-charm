@@ -12,7 +12,10 @@
   "done nod: head_dy 4, 7, 4, 0 (the reference frame is head_dy 7)",
   "lookout toe-tap: right shoe rot -24 -> -10 with the ankle 3 units down",
   "attention: no design pose of its own; it is the sheet's 'something for you', which the final design ships as job done (show_phone), so it plays show_phone's frames",
-  "reading outfit: the design source has none yet, so reading borrows the default frames"
+  "reading outfit (build_reading.py): idle = book-hug (R1), speaking = show-page talking (R2, voice on: mouth 'open' / 'o'), attention = show-page with the mouth closed (R2 quiet: a card is up and nothing is spoken), paper = read (R3/R5), done = tuck (R6); every other pose borrows the default frames",
+  "reading done (tuck): note 16 units above -> the design's frame -> 14 units in, head_dy 2/6/9",
+  "reading, not exported: glasses reach/on, page-turn A/B, shh finger-rising and crier book-rising have no pose code in build_reading.py; night reading is not budgeted",
+  "reading, exported but not compiled: shh (R4 quiet) and crier (R4 voice on) are 1.6 s confirmation moments with no dex_pose_t to play them"
  ],
  "sprites": {
   "format": "rgb565",
@@ -795,8 +798,210 @@
       17
      ]
     }
+   },
+   "reading-idle": {
+    "file": "frames/reading-idle.png",
+    "points": {
+     "hand": [
+      84,
+      104,
+      17,
+      17
+     ]
+    }
+   },
+   "reading-idle-half": {
+    "file": "frames/reading-idle-half.png",
+    "points": {
+     "hand": [
+      84,
+      104,
+      17,
+      17
+     ]
+    }
+   },
+   "reading-idle-closed": {
+    "file": "frames/reading-idle-closed.png",
+    "points": {
+     "hand": [
+      84,
+      104,
+      17,
+      17
+     ]
+    }
+   },
+   "reading-speaking-0": {
+    "file": "frames/reading-speaking-0.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-speaking-0-half": {
+    "file": "frames/reading-speaking-0-half.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-speaking-0-closed": {
+    "file": "frames/reading-speaking-0-closed.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-speaking-1": {
+    "file": "frames/reading-speaking-1.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-speaking-1-half": {
+    "file": "frames/reading-speaking-1-half.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-speaking-1-closed": {
+    "file": "frames/reading-speaking-1-closed.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-attention": {
+    "file": "frames/reading-attention.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-attention-half": {
+    "file": "frames/reading-attention-half.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-attention-closed": {
+    "file": "frames/reading-attention-closed.png",
+    "points": {
+     "hand": [
+      78,
+      67,
+      17,
+      18
+     ]
+    }
+   },
+   "reading-paper": {
+    "file": "frames/reading-paper.png",
+    "points": {
+     "hand": [
+      88,
+      118,
+      17,
+      17
+     ]
+    }
+   },
+   "reading-done-0": {
+    "file": "frames/reading-done-0.png",
+    "points": {
+     "hand": [
+      109,
+      73,
+      18,
+      17
+     ]
+    }
+   },
+   "reading-done-1": {
+    "file": "frames/reading-done-1.png",
+    "points": {
+     "hand": [
+      108,
+      82,
+      18,
+      18
+     ]
+    }
+   },
+   "reading-done-2": {
+    "file": "frames/reading-done-2.png",
+    "points": {
+     "hand": [
+      108,
+      91,
+      18,
+      18
+     ]
+    }
+   },
+   "reading-shh": {
+    "file": "frames/reading-shh.png",
+    "points": {
+     "hand": [
+      72,
+      91,
+      18,
+      17
+     ]
+    }
+   },
+   "reading-crier": {
+    "file": "frames/reading-crier.png",
+    "points": {
+     "hand": [
+      116,
+      62,
+      18,
+      18
+     ]
+    }
    }
   },
+  "unplayed": [
+   "reading-shh",
+   "reading-crier"
+  ],
   "animations": [
    {
     "pose": "idle",
@@ -1136,6 +1341,96 @@
       "error-closed"
      ]
     ],
+    "breath": "day"
+   },
+   {
+    "pose": "idle",
+    "outfit": "reading",
+    "frames": [
+     {
+      "frame": "reading-idle",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "reading-idle-half",
+      "reading-idle-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "speaking",
+    "outfit": "reading",
+    "frames": [
+     {
+      "frame": "reading-speaking-0",
+      "ms": 200
+     },
+     {
+      "frame": "reading-speaking-1",
+      "ms": 200
+     }
+    ],
+    "blink": [
+     [
+      "reading-speaking-0-half",
+      "reading-speaking-0-closed"
+     ],
+     [
+      "reading-speaking-1-half",
+      "reading-speaking-1-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "attention",
+    "outfit": "reading",
+    "frames": [
+     {
+      "frame": "reading-attention",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "reading-attention-half",
+      "reading-attention-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "paper",
+    "outfit": "reading",
+    "frames": [
+     {
+      "frame": "reading-paper",
+      "ms": 1000
+     }
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "done",
+    "outfit": "reading",
+    "frames": [
+     {
+      "frame": "reading-done-0",
+      "ms": 120
+     },
+     {
+      "frame": "reading-done-1",
+      "ms": 120
+     },
+     {
+      "frame": "reading-done-2",
+      "ms": 480
+     }
+    ],
+    "loop_from": 2,
     "breath": "day"
    }
   ]

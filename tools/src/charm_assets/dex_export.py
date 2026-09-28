@@ -1,4 +1,5 @@
-"""Export the smooth Dex from the design source (docs/design/final/src/{dex,sheet,build}.py).
+"""Export the smooth Dex from the design source: docs/design/final/src/{dex,sheet,build}.py and the
+reading mode's docs/design/final/reading/src/build_reading.py.
 
 The poses are code, so this module never draws Dex. It imports the locked design modules read-only
 (no bytecode is written next to them), calls their pose functions, and renders the SVG they return
@@ -60,7 +61,15 @@ EXPORT_NOTES = [
     "lookout toe-tap: right shoe rot -24 -> -10 with the ankle 3 units down",
     "attention: no design pose of its own; it is the sheet's 'something for you', which the "
     "final design ships as job done (show_phone), so it plays show_phone's frames",
-    "reading outfit: the design source has none yet, so reading borrows the default frames",
+    "reading outfit (build_reading.py): idle = book-hug (R1), speaking = show-page talking (R2, "
+    "voice on: mouth 'open' / 'o'), attention = show-page with the mouth closed (R2 quiet: a card "
+    "is up and nothing is spoken), paper = read (R3/R5), done = tuck (R6); every other pose "
+    "borrows the default frames",
+    "reading done (tuck): note 16 units above -> the design's frame -> 14 units in, head_dy 2/6/9",
+    "reading, not exported: glasses reach/on, page-turn A/B, shh finger-rising and crier "
+    "book-rising have no pose code in build_reading.py; night reading is not budgeted",
+    "reading, exported but not compiled: shh (R4 quiet) and crier (R4 voice on) are 1.6 s "
+    "confirmation moments with no dex_pose_t to play them",
 ]
 
 
@@ -72,27 +81,36 @@ class Design:
     dex: Any
     sheet: Any
     build: Any
+    reading: Any  # build_reading.py, or None when the design has no reading mode
     src: Path
 
 
+READING_SRC = Path("../reading/src")  # relative to the final design source
+
+
 def load_design(src: Path) -> Design:
-    """Import dex.py, sheet.py and build.py from `src` without writing anything next to them."""
+    """Import dex.py, sheet.py, build.py (and ../reading/src/build_reading.py when present) from
+    `src` without writing anything next to them."""
     for name in ("dex.py", "sheet.py", "build.py"):
         if not (src / name).is_file():
             raise ManifestError(f"design source {src} has no {name}")
+    reading = (src / READING_SRC).resolve()
+    names = ["dex", "sheet", "build"]
+    if (reading / "build_reading.py").is_file():
+        names.append("build_reading")
     saved_path, saved_flag = list(sys.path), sys.dont_write_bytecode
-    saved_mods = {k: sys.modules.pop(k) for k in ("dex", "sheet", "build") if k in sys.modules}
+    saved_mods = {k: sys.modules.pop(k) for k in names if k in sys.modules}
     sys.dont_write_bytecode = True
-    sys.path.insert(0, str(src))
+    sys.path[:0] = [str(src), str(reading)]
     try:
-        mods = [importlib.import_module(m) for m in ("dex", "sheet", "build")]
+        mods = [importlib.import_module(m) for m in names]
     finally:
         sys.path[:] = saved_path
         sys.dont_write_bytecode = saved_flag
-        for k in ("dex", "sheet", "build"):
+        for k in names:
             sys.modules.pop(k, None)
         sys.modules.update(saved_mods)
-    return Design(dex=mods[0], sheet=mods[1], build=mods[2], src=src)
+    return Design(mods[0], mods[1], mods[2], mods[3] if len(mods) > 3 else None, src)
 
 
 # ---------------------------------------------------------------- capturing pose parameters
@@ -123,9 +141,10 @@ class Pose:
 
     pal: dict[str, Any]
     kw: dict[str, Any]
+    glasses: bool = False  # build_reading's @reading head overlay was on
 
     def with_(self, **over: Any) -> Pose:
-        return Pose(self.pal, {**self.kw, **over})
+        return Pose(self.pal, {**self.kw, **over}, self.glasses)
 
 
 @contextmanager
@@ -141,12 +160,16 @@ def _capturing(d: Design) -> Iterator[None]:
         return lambda *a, **k: Call.make(real, a, k)
 
     def fig(pal: dict[str, Any], uid: str, **kw: Any) -> Pose:
-        return Pose(pal, {**d.dex.DEFAULT, **kw})
+        glasses = bool(d.reading and d.reading.GL["on"])
+        return Pose(pal, {**d.dex.DEFAULT, **kw}, glasses)
 
-    for mod in (d.build, d.sheet):
-        patch(mod, "figure", fig)
+    for mod in (d.build, d.sheet, d.reading):
+        if mod is not None:
+            patch(mod, "figure", fig)
     patch(d.build, "takeout_fill", record(d.build.takeout_fill))
     patch(d.sheet, "mug", record(d.sheet.mug))
+    if d.reading is not None:
+        patch(d.reading, "note_card", record(d.reading.note_card))
     try:
         yield
     finally:
@@ -177,7 +200,7 @@ def _lerp(a: Any, b: Any, t: float) -> Any:
 def between(a: Pose, b: Pose, t: float) -> Pose:
     """The in-between of two captured poses: every numeric design parameter interpolated."""
     keys = a.kw.keys() | b.kw.keys()
-    return Pose(a.pal, {k: _lerp(a.kw.get(k), b.kw.get(k), t) for k in keys})
+    return Pose(a.pal, {k: _lerp(a.kw.get(k), b.kw.get(k), t) for k in keys}, a.glasses)
 
 
 # ---------------------------------------------------------------- geometry (the overlay points)
@@ -249,6 +272,7 @@ class Frame:
 @dataclass
 class Anim:
     pose: str
+    outfit: str
     frames: list[tuple[str, int]]  # (frame name, ms)
     loop_from: int = 0
     blink: list[tuple[str, str]] | None = None  # per frame: (half, closed)
@@ -262,6 +286,7 @@ class Anim:
 class FrameSet:
     frames: dict[str, Frame] = field(default_factory=dict)
     anims: list[Anim] = field(default_factory=list)
+    unplayed: list[str] = field(default_factory=list)  # exported for review, not compiled
 
     def add(self, name: str, pose: Pose, night: bool = False) -> str:
         if name in self.frames:
@@ -276,6 +301,12 @@ class FrameSet:
         closed = self.add(f"{name}-closed", pose.with_(eyes="blink"))
         return base, (half, closed)
 
+    def anim(
+        self, pose: str, frames: list[tuple[str, int]], outfit: str = "default", **kw: Any
+    ) -> Anim:
+        self.anims.append(Anim(pose, outfit, frames, **kw))
+        return self.anims[-1]
+
 
 def frame_set(d: Design) -> FrameSet:
     """Every frame motion.md needs for the 15 dex_sprite.h poses, from the design's pose code."""
@@ -286,7 +317,7 @@ def frame_set(d: Design) -> FrameSet:
 
     def still(pose: str, p: Pose) -> Anim:
         f, bl = fs.blinking(pose, p)
-        fs.anims.append(Anim(pose, [(f, 1000)], blink=[bl]))
+        fs.anim(pose, [(f, 1000)], blink=[bl])
         return fs.anims[-1]
 
     # idle: the Home hero (mug at the chin) with a 3-frame steam loop, blinks and a sip.
@@ -300,26 +331,26 @@ def frame_set(d: Design) -> FrameSet:
     sip_pose = capture(d, sh.pose_idle, pal, "i", 3)
     mid = fs.add("idle-sip-mid", between(hero, sip_pose, 0.5))
     sip = fs.add("idle-sip", sip_pose)
-    fs.anims.append(Anim("idle", steam, blink=blinks, sip=[(mid, 400), (sip, 1200), (mid, 400)]))
+    fs.anim("idle", steam, blink=blinks, sip=[(mid, 400), (sip, 1200), (mid, 400)])
 
     # listening: lean in, cupped hand; 2-frame head bob at 300 ms.
     lis = capture(d, b.pose_listen_in, pal, "l")
     fa, ba = fs.blinking("listening-0", lis)
     fb, bb = fs.blinking("listening-1", lis.with_(head_dy=lis.kw["head_dy"] + 4))
-    fs.anims.append(Anim("listening", [(fa, 300), (fb, 300)], blink=[ba, bb]))
+    fs.anim("listening", [(fa, 300), (fb, 300)], blink=[ba, bb])
 
     # working: head down over the phone (eyes down: no blinks); thumb-tap 2 frames at 300 ms.
     wk = capture(d, b.pose_working, pal, "w")
     x, y, *rest = wk.kw["handR"]
     wa = fs.add("working-0", wk)
     wb = fs.add("working-1", wk.with_(handR=(x - 1, y - 3, *rest)))
-    fs.anims.append(Anim("working", [(wa, 300), (wb, 300)]))
+    fs.anim("working", [(wa, 300), (wb, 300)])
 
     # speaking: palm toward the answer; the mouth alternates.
     sp = capture(d, b.pose_present, pal, "a")
     sa, sba = fs.blinking("speaking-0", sp)
     sb, sbb = fs.blinking("speaking-1", sp.with_(mouth="o"))
-    fs.anims.append(Anim("speaking", [(sa, 200), (sb, 200)], blink=[sba, sbb]))
+    fs.anim("speaking", [(sa, 200), (sb, 200)], blink=[sba, sbb])
 
     still("ask_yes", capture(d, b.pose_ask, pal, acc, "d"))
     offer = capture(d, b.pose_offer_bag, pal, acc, "m")
@@ -344,21 +375,19 @@ def frame_set(d: Design) -> FrameSet:
             armR=(sa_, se_, (sh_[0], sh_[1] + dy)),
         ),
     )
-    fs.anims.append(
-        Anim(
-            "lift_bag",
-            [(ib1, 100), (ib2, 100), (up, 200), (bob, 200), (up, 200)],
-            loop_from=3,
-            exit_to="offer_bag",
-            exit=[(ib2, 100), (ib1, 100)],
-            breath="none",
-        )
+    fs.anim(
+        "lift_bag",
+        [(ib1, 100), (ib2, 100), (up, 200), (bob, 200), (up, 200)],
+        loop_from=3,
+        exit_to="offer_bag",
+        exit=[(ib2, 100), (ib1, 100)],
+        breath="none",
     )
 
     # done: hands the bag over, nods once (head +4, +7, +4, 0 over 480 ms), then holds.
     ho = capture(d, b.pose_handoff, pal, acc, "o")
     nod = [fs.add(f"done-{i}", ho.with_(head_dy=h)) for i, h in enumerate((4, 7, 4, 0))]
-    fs.anims.append(Anim("done", [(n, 120) for n in nod], loop_from=3))
+    fs.anim("done", [(n, 120) for n in nod], loop_from=3)
 
     # lookout: arms folded, eyes on the door, toe-tap.
     lk = capture(d, b.pose_lookout, pal, "t")
@@ -368,11 +397,11 @@ def frame_set(d: Design) -> FrameSet:
         "lookout-1",
         lk.with_(legR=(hip, knee, (ankle[0], ankle[1] + 3)), shoeR=(shx, shy + 3, -10)),
     )
-    fs.anims.append(Anim("lookout", [(la, 300), (lb, 300)], blink=[lba, lbb]))
+    fs.anim("lookout", [(la, 300), (lb, 300)], blink=[lba, lbb])
 
     still("paper", capture(d, b.pose_paper, pal, "p"))
     phone = still("show_phone", capture(d, b.pose_review, pal, "j"))
-    fs.anims.append(Anim("attention", phone.frames, blink=phone.blink))
+    fs.anim("attention", phone.frames, blink=phone.blink)
 
     # asleep: the night palette baked in; slow steam, no blinks, 6.0 s breathing.
     sl = capture(d, sh.pose_sleep, night, "n")
@@ -381,11 +410,64 @@ def frame_set(d: Design) -> FrameSet:
         (fs.add(f"asleep-s{i}", sl.with_(props_top=(smug.with_(lean=lean),)), night=True), 400)
         for i, lean in enumerate((0, -6, 6))
     ]
-    fs.anims.append(Anim("asleep", zs, breath="night"))
+    fs.anim("asleep", zs, breath="night")
 
     still("offline", capture(d, sh.pose_offline, pal, "f"))
     still("error", capture(d, b.pose_shrug, pal, "q"))
+    if d.reading is not None:
+        reading_frames(d, fs)
     return fs
+
+
+def reading_frames(d: Design, fs: FrameSet) -> None:
+    """The reading outfit (docs/design/final/reading/reading.md) on the existing poses."""
+    r, pal = d.reading, d.build.P
+    o = "reading"
+
+    # idle: R1 book-hug. The design's own frame 1 is the closed blink.
+    hug = capture(d, r.pose_book_hug, pal, "h", 0)
+    base = fs.add("reading-idle", hug)
+    half = fs.add("reading-idle-half", hug.with_(eyes="down"))
+    closed = fs.add("reading-idle-closed", capture(d, r.pose_book_hug, pal, "h", 1))
+    fs.anim("idle", [(base, 1000)], o, blink=[(half, closed)])
+
+    # speaking: R2 show-page with the speaking mouth (voice on, the lead is playing).
+    talk = capture(d, r.pose_show_page, pal, "r", True)
+    ta, tba = fs.blinking("reading-speaking-0", talk)
+    tb, tbb = fs.blinking("reading-speaking-1", talk.with_(mouth="o"))
+    fs.anim("speaking", [(ta, 200), (tb, 200)], o, blink=[tba, tbb])
+
+    # attention: R2 show-page, mouth closed: the lead is up and nothing is spoken (quiet).
+    quiet = capture(d, r.pose_show_page, pal, "r", False)
+    qa, qb = fs.blinking("reading-attention", quiet)
+    fs.anim("attention", [(qa, 1000)], o, blink=[qb])
+
+    # paper: R3/R5 read, eyes down on the page (no blinks).
+    fs.anim("paper", [(fs.add("reading-paper", capture(d, r.pose_read, pal, "d", 0)), 1000)], o)
+
+    # done: R6 tuck, note above -> half in -> in + nod (120 / 120 / 480 ms), once, then hold.
+    tuck = capture(d, r.pose_tuck, pal, "v")
+    note, book = tuck.kw["props_top"]
+    hx, hy, *hrest = tuck.kw["handR"]
+    sa, se, sh = tuck.kw["armR"]
+    steps = []
+    for i, (dy, head) in enumerate(((-16, 2), (0, 6), (14, 9))):
+        steps.append(
+            fs.add(
+                f"reading-done-{i}",
+                tuck.with_(
+                    props_top=(note.with_(y=note.bound["y"] + dy), book),
+                    handR=(hx, hy + dy, *hrest),
+                    armR=(sa, se, (sh[0], sh[1] + dy)),
+                    head_dy=head,
+                ),
+            )
+        )
+    fs.anim("done", list(zip(steps, (120, 120, 480), strict=True)), o, loop_from=2)
+
+    # R4's 1.6 s confirmation poses: exported for review, no dex_pose_t plays them.
+    fs.unplayed.append(fs.add("reading-shh", capture(d, r.pose_shh, pal, "q")))
+    fs.unplayed.append(fs.add("reading-crier", capture(d, r.pose_call, pal, "s")))
 
 
 # ---------------------------------------------------------------- rendering
@@ -395,10 +477,16 @@ def render_screen(d: Design, frame: Frame) -> Image.Image:
     import resvg_py  # imported here: only the export needs it
 
     b = d.build
-    art = b.floor(night=frame.night) + b.place(d.dex.figure(frame.pose.pal, "x", **frame.pose.kw))
+    gl = d.reading.GL if d.reading is not None else {"on": False}
+    gl["on"] = frame.pose.glasses
+    try:
+        fig = d.dex.figure(frame.pose.pal, "x", **frame.pose.kw)
+    finally:
+        gl["on"] = False
+    art = b.floor(night=frame.night) + b.place(fig)
     png = resvg_py.svg_to_bytes(svg_string=b.svg(art))
     with Image.open(io.BytesIO(bytes(png))) as im:
-        out = im.convert("RGB")
+        out: Image.Image = im.convert("RGB")
     if out.size != SCREEN:
         raise ManifestError(f"export: {frame.name} rendered at {out.size}, want {SCREEN}")
     return out
@@ -445,7 +533,7 @@ def export(design_src: Path, out: Path) -> dict[str, Any]:
 
     anims = []
     for a in fs.anims:
-        e: dict[str, Any] = {"pose": a.pose, "outfit": "default", "frames": seq(a.frames)}
+        e: dict[str, Any] = {"pose": a.pose, "outfit": a.outfit, "frames": seq(a.frames)}
         if a.loop_from:
             e["loop_from"] = a.loop_from
         if a.blink:
@@ -484,6 +572,7 @@ def export(design_src: Path, out: Path) -> dict[str, Any]:
                 "sip_every_ms": [20000, 40000],
             },
             "frames": frames,
+            "unplayed": fs.unplayed,
             "animations": anims,
         },
     }

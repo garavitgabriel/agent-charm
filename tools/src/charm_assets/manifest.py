@@ -139,7 +139,7 @@ class SmoothSpec:
 
 POINTS = ("hand", "bag")  # dex_point_t order in ui/dex_sprite.h
 BREATHS = ("none", "day", "night")
-COMPRESSIONS = ("lz4", "rle")
+COMPRESSIONS = ("lz4",)  # RLE was measured and lost: see smooth.py
 
 
 @dataclass(frozen=True)

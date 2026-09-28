@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from conftest import DUMMY_MANIFEST, TOOLS, UI, base_sprites
+from conftest import DEX_MANIFEST, DUMMY_MANIFEST, TOOLS, UI, base_sprites
 from PIL import Image
 
 from charm_assets import cli, dummy, manifest, palette, sprites
@@ -110,7 +110,8 @@ def test_dummy_sheet_is_reproducible() -> None:
 
 
 def test_committed_sprite_files_are_up_to_date() -> None:
-    rc = cli.main(["sprites", str(DUMMY_MANIFEST), "--out-dir", str(UI), "--check"])
+    # Since batch 11 ui/charm_assets_sprites.* come from the smooth Dex (ui/assets-src/dex).
+    rc = cli.main(["sprites", str(DEX_MANIFEST), "--out-dir", str(UI), "--check"])
     assert rc == 0, "ui/charm_assets_sprites.* are stale: run `uv run charm-assets sprites ...`"
 
 

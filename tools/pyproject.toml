@@ -40,5 +40,9 @@ python_version = "3.12"
 strict = true
 mypy_path = "src"
 
+[[tool.mypy.overrides]]
+module = ["lz4", "lz4.*"]  # no stubs; used through two typed wrappers in smooth.py
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
