@@ -71,7 +71,7 @@ server: state{transcribing} → transcript{final:true} → state{working, agent:
 device: displayed{id}
 ```
 The spoken reply is **at most 2 sentences**; the card is at most ~60 words. When the full answer is
-longer, the card's `footer` says where the rest went ("Full version in Telegram").
+longer, the card's `footer` says so (see clarification #5).
 
 **Decision:** the server pushes `card{kind:"decision"}`. The device sends
 `action{card_id, action:"approve"|"reject"|"snooze"}`. The server confirms with `state{done}`, then
@@ -112,8 +112,8 @@ These are additive; nothing breaks. The device and UI must treat them as the con
 3. **Speech order:** `state{speaking}` comes before `speech_start`.
 4. **A confirmed sample (fixture) money order** is replaced by a `notice` card ("Sample order: nothing
    was charged"). No ✓ is shown, because nothing real happened.
-5. **Truncated-answer footer:** "Shortened. Ask Dex for the rest." Never "Full version in Telegram"
-   unless something was actually sent to Telegram.
+5. **Truncated-answer footer:** "Shortened. Ask Dex for the rest." Never "Full version in <chat app>"
+   unless something was actually sent there.
 6. **An `action` on a card id this connection never received** is answered with `dismiss{card_id}`.
 7. **Edition cards may carry `stale: true` plus a footer** like "<Desk> desk missed deadline — last
    filed <when>", and a failed desk yields a card with only that wording. `edition_no` is optional and
@@ -214,7 +214,7 @@ device: action{card_id, action:"hear"}  → server speaks the card's body (speec
 
 - **Coach's call** is a `decision` card from `source:"coach"`:
   - `data.default` is the verdict ("Start Purdy");
-  - `data.deadline` is in Chicago� time;
+  - `data.deadline` is in the server's `CHARM_TZ`;
   - `data.flip_if` is new and optional (≤ 80 chars): "Flip only if Purdy is out before Sun 12:00";
   - actions are `hear` / `why` / `later`. `why` asks Coach for the reasoning as another walk-away job.
 - Coach never gets money cards, and there's no reading mode for Coach.

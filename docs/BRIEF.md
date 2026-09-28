@@ -4,22 +4,22 @@ type: brief
 created: 2026-09-25
 updated: 2026-09-27
 status: designed (§ 11), in build
-vault_home: ~/notes-vault/agents/active/hermes/charm/README.md
 ---
 
 # Dex Charm — product and design brief
 
-This brief is the context pack for `/design-sprint ~/Projects/dex-charm`. The canvas has no memory of the
+This brief was the context pack for the design sprint (`/design-sprint`). The canvas has no memory of the
 brainstorm that produced it, so everything the sprint needs is here.
 
 ## 1. What it is
 
 A pocket-sized device with a small, always-animated **Dex** on its screen. Dex is the owner's personal
-chief-of-staff agent (Nous Hermes, running on his VPS). The charm is **Dex with a body**. The owner can
-hold to talk, glance at what's pending, and approve things with one tap, without opening his phone.
+chief-of-staff agent (in the original build, a Nous Hermes agent on a VPS). The charm is **Dex with a
+body**. The owner can hold to talk, glance at what's pending, and approve things with one tap,
+without opening a phone.
 
-It is **not a new agent**. Dex, Coach Beard (fantasy football), the DeliveryCo ordering tools, the daily
-newspaper and the cat camera already exist. The charm is a **remote control and a face** for them.
+It is **not a new agent**. Dex, Coach Beard (fantasy football), food-delivery ordering tools, the daily
+newspaper and a pet camera already exist. The charm is a **remote control and a face** for them.
 Humane and Rabbit failed by squeezing a new agent into a gadget. This goes the other way: the agents
 already work, and the device only has to do three things well:
 
@@ -36,8 +36,8 @@ person's existing agent fleet sits behind it.
 
 ## 2. The hardware (the canvas)
 
-Waveshare **ESP32-S3-Touch-AMOLED-1.8 V2**. The owner already owns this board; it currently runs the
-Margin reading-companion prototype.
+Waveshare **ESP32-S3-Touch-AMOLED-1.8 V2**. The original build reused a board that ran the Margin
+reading-companion prototype.
 
 | Constraint | Value | Design consequence |
 |---|---|---|
@@ -56,7 +56,7 @@ Margin reading-companion prototype.
 - **Hands:** one. The thumb reaches the whole screen.
 - **Light:** everything from a dark bedroom (reading at night) to daylight. There's a dim night mode.
 - **Languages:** English and Spanish (the owner is bilingual; Dex answers in the language spoken).
-- **What it competes with:** his phone. If the charm pulls him into checking it constantly, it failed.
+- **What it competes with:** the phone. If the charm pulls you into checking it constantly, it failed.
   **Dex waits to be looked at; he never pings.** No badges, streaks or nag sounds.
 - **Cost of failure:** a wrong tap spending money is the worst case. Money actions need a deliberate
   2-second hold on a preview.
@@ -101,9 +101,9 @@ green-checked task list. Both the mug and the badge carry a small **ringed-plane
 | Default | Mug + checklist phone | Dex |
 | Game day | Whistle + clipboard, maybe a cap | Coach Beard (NFL fantasy) |
 | Reading | Reading glasses + a book | Margin reading mode |
-| Food order | Delivery bag / takeout box | DeliveryCo |
+| Food order | Delivery bag / takeout box | A food-delivery agent |
 | Code review | Laptop or magnifying glass | GitHub (future) |
-| The cat | A cat on his shoulder | Ojo de Gato cat camera |
+| The cat | A cat on his shoulder | A pet camera |
 
 4. ~~**Two sizes.**~~ **Superseded: one size, one anchor.** Dex is full body at one scale in one
    anchor zone on every screen, and content sits above him (§ 11). All the critics failed the corner
@@ -117,12 +117,12 @@ Keep these names across every render so the critiques stay comparable.
 2. **Listening**: Dex listening, a live level indicator, the elapsed-time limit.
 3. **Working**: Dex working, with a one-line "what" ("Asking Coach Beard…") and a cancel.
 4. **Answer card**: the mini Dex in a corner and a card of at most 60 words. The spoken version is at
-   most 2 sentences. Link-out footer: "Full version in Telegram."
+   most 2 sentences. Link-out footer: "Full version in <main chat>." (superseded, see § 11.3)
 5. **Decision card**: one of Dex's questions with its **default and deadline** ("Pause the side project?
    Default: yes, Sunday"). ✓ / ✗ / snooze.
-6. **Money card: DeliveryCo preview**: store, items, total in COP, ETA, address, and a **2-second
+6. **Money card: delivery preview**: store, items, total in local currency, ETA, address, and a **2-second
    hold-to-confirm ring**. It must be impossible to trigger by accident.
-7. **Live tracker: DeliveryCo order**: Dex watches the rider; the steps are preparing, picked up, 5 min
+7. **Live tracker: delivery order**: Dex watches the rider; the steps are preparing, picked up, 5 min
    away, arrived.
 8. **Pocket edition**: the daily newspaper as 6 swipeable cards (see § 6).
 9. **Job done**: a finished long task, e.g. "PR #42: 1 blocking, 2 nits". Actions: Send to Claude
@@ -133,9 +133,8 @@ Keep these names across every render so the critiques stay comparable.
 ## 6. The pocket edition (the newspaper on the charm)
 
 Dex publishes a daily newspaper: an evening edition (6 pages) and a morning sheet. Its design language
-lives in the vault at `agents/active/hermes/edition-design/`: the `_tokens.css` palette and fonts
-(paper/ink serif broadsheet, Playfair display, mono kickers, an accent red; the dark variant uses
-yellow `#f2d02e` on `#0d0d0d`), plus `phone-edition-brief.md` and the `design-v3-phone-*` pages.
+lives with the agent (not in this repo): a paper/ink serif broadsheet, Playfair display, mono
+kickers, an accent red; the dark variant uses yellow `#f2d02e` on `#0d0d0d`.
 
 The charm doesn't shrink that HTML. It renders the **same structured desk feeds** as its own edition.
 Each card should feel like a clipping from Dex's paper, with Dex standing next to it:
@@ -157,7 +156,7 @@ font everywhere, crisp serif cards with a pixel Dex, or something in between? Le
 These rules come from the Margin prototype and Dex's charter:
 
 - Spoken answers are at most **2 sentences**. Cards are at most **~60 words**. Anything longer goes
-  to Telegram or a notes app, never read aloud.
+  to the main chat or a notes app, never read aloud.
 - Never fake a state: no listening pose unless the mic is on, and no ✓ before the backend confirms.
 - Stale data says so ("desk missed deadline").
 - Money = a preview plus a deliberate hold. Messages to other people = approval. Dex reminds; the owner
@@ -176,8 +175,8 @@ These rules come from the Margin prototype and Dex's charter:
 ## 9. Run it on the Mac before the device
 
 The plan after design comes back: build the UI in **LVGL** and run it in LVGL's **macOS desktop
-simulator**. The same C code compiles for the ESP32, so what the owner sees on the Mac is what the
-device will show. A fake backend replays sample feeds (an edition, a DeliveryCo order, a decision) so every
+simulator**. The same C code compiles for the ESP32, so what you see on the Mac is what the
+device will show. A fake backend replays sample feeds (an edition, a delivery order, a decision) so every
 surface can be tested with no hardware. Flashing comes after the simulator looks right. The board's
 original firmware is already backed up (Margin repo, `.local/backups/`).
 
@@ -193,13 +192,13 @@ original firmware is already backed up (Margin repo, `.local/backups/`).
   repo.
 
 **Not decided (not design blockers):**
-- Whether a hold on the charm counts as the owner's explicit yes for DeliveryCo checkout. That's a charter
-  amendment in `agents/active/hermes/charter.md`. Design the money card anyway.
+- Whether a hold on the charm counts as the owner's explicit yes for a real checkout. That's a
+  change to the agent's own rules. Design the money card anyway.
 - Read-only GitHub access for Dex. Hermes has no repo access today.
 - Voice tier: A (free: local Whisper + Edge TTS), B (ElevenLabs voice with Dex as the brain), or C
   (fast realtime model plus a handoff to Dex).
-- Where the server runs outside the house: probably next to Hermes on the VPS, with the charm on the
-  phone's hotspot.
+- Where the server runs outside the house: probably next to the agent on a VPS, with the charm on
+  the phone's hotspot. (Since done: see `deploy/vps/README.md`.)
 
 ## 11. Design (final, from /design-sprint 2026-09-25 → 27)
 
@@ -208,7 +207,7 @@ original firmware is already backed up (Margin repo, `.local/backups/`).
 The reference screens are [`design/final/*.png`](design/final/) at 368×448, and their generating source
 is [`design/final/src/`](design/final/src/). **Implement from the final render, not from a critic report
 or a chat screenshot.** Evidence and history: [`design/bones.md`](design/bones.md),
-`design/critic-r*.md`, and the vault sprint log `agents/active/hermes/charm/assets/design/sprint-log.md`.
+and the design-sprint records in `docs/internal/design-sprint/`.
 
 ### 11.1 Direction
 
@@ -248,9 +247,9 @@ Accent candidates tested: purple `#B3A6FF`, gold, mint `#9FE3C4`
 | 1 | Home / Idle | `01-home.png` | idle hero, mug, steam | Dex + one status line ("Nothing needs you") |
 | 2 | Listening | `02-listening.png` | lean-in, cupped hand | "I'm listening." + voice stream + separator-as-fuse (**25 s**: the firmware/UI listen limit) |
 | 3 | Working | `03-working.png` | head down over phone | one-line what ("Asking Coach Beard…") + Cancel |
-| 4 | Answer | `04-answer.png` | talking, palm toward answer | ≤ 60 words; footer is **server-set**: "Shortened. Ask Dex for the rest." (PROTOCOL clarification #5). The PNG still shows the old Telegram footer; **the contract wins**. |
+| 4 | Answer | `04-answer.png` | talking, palm toward answer | ≤ 60 words; footer is **server-set**: "Shortened. Ask Dex for the rest." (PROTOCOL clarification #5). The PNG still shows the old chat-app footer; **the contract wins**. |
 | 5 | Decision | `05-decision.png` | holds up the "Yes" sign (the default) | question + "Default: …" + Yes / No / Later |
-| 6 | Money preview | `06-money-preview.png` | bag at chest | merchant (18), **total (40) + COP (32)**, items · ETA · place (18), "Hold Dex to order" (32/600, gold) |
+| 6 | Money preview | `06-money-preview.png` | bag at chest | merchant (18), **total (40) + currency code (32)**, items · ETA · place (18), "Hold Dex to order" (32/600, gold) |
 | 7 | Money mid-hold | `07-money-mid-hold.png` | on toes, bag overhead (1.72×), filling gold | "Ordering…" (32) |
 | 8 | Done | `08-done.png` | hands the full bag over, nod | "Ordered." + arrival. Shown only after the backend confirms. |
 | 9 | Live tracker | `09-live-tracker.png` | arms folded, leans back, looks to the door, toe-tap | current stop 32 px, others 18 px |
@@ -274,7 +273,7 @@ change is about 400 ms total.
 ### 11.5 Copy rules
 
 - The spoken reply is **≤ 2 sentences**; cards are **≤ 60 words**. Anything longer is never read aloud.
-  The truncation footer is server-set: "Shortened. Ask Dex for the rest." Nothing goes to Telegram yet,
+  The truncation footer is server-set: "Shortened. Ask Dex for the rest." Nothing goes to the main chat yet,
   so never claim it does.
 - Headline-first and short ("Light day.", "Nothing needs you"). State the default and the deadline
   on decisions ("Default: yes, Sunday.").
@@ -287,7 +286,7 @@ change is about 400 ms total.
 ### 11.8 Reading mode (rendered 2026-09-27)
 
 Source of truth: [`design/final/reading/reading.md`](design/final/reading/reading.md) and
-`design/final/reading/*.png`. The canvas is https://example.com/design-canvas. It uses
+`design/final/reading/*.png`. It uses
 the same tokens, anchor, separator and gold accent as § 11.2. Dex wears reading glasses and holds an
 indigo book (`#7274B8` / `#50529A` / `#3A3B72`, chosen to stay clear of the gold and the teal).
 
@@ -307,7 +306,7 @@ tuck 3), about 1.47 MB raw. Night variants are not budgeted (+20 if baked).
 
 ### Contract overrides (build wins over the render)
 
-- Answer footer: "Shortened. Ask Dex for the rest." (server-set, PROTOCOL #5), not "Full version in Telegram".
+- Answer footer: "Shortened. Ask Dex for the rest." (server-set, PROTOCOL #5), not "Full version in <main chat>".
 - Listening fuse: 25 s (firmware listen limit), not 30 s. The fuse spans 320 px over 25 s.
 
 ### 11.6 Pre-merge checklist (the bones + kill list, verbatim from `design/bones.md`)
@@ -405,6 +404,5 @@ character is the cue.
 
 - Meta Muse Charm coverage: TechCrunch 2026-09-23 and 2026-09-24; Meta Connect 2026 recap blog; Irish
   Times 2026-09-24; TechEBlog. Meta has published no official spec sheet; details are as reported.
-- Margin prototype: `margin` (README, `docs/hardware.md`, `docs/hermes.md`).
-- Dex charter and DeliveryCo gate: vault `agents/active/hermes/charter.md`.
-- Newspaper design system: vault `agents/active/hermes/edition-design/`.
+- Margin, the author's earlier reading-companion prototype for the same board (unpublished).
+- Dex's charter and the newspaper design system live with the agent, outside this repo.

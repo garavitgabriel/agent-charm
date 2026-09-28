@@ -1,6 +1,15 @@
 # Coach Beard on the charm — plan
 
-Status: **planned 2026-09-28.** the owner approved it ("lets do it"). It starts after the VPS move.
+> **Coach is optional.** He's the worked example of giving the charm a second agent with its own
+> body, voice and history. The server keeps him off unless `COACH_ENABLED=1`:
+> - with `CHARM_AGENT=openai`, he's the same endpoint with his own persona (and `COACH_MODEL`, if
+>   you want a different model);
+> - with `CHARM_AGENT=hermes`, he's a second Hermes profile (`COACH_ENV_PATH`, `COACH_PORT`), with
+>   an optional read-only decision ledger for the fast path (`COACH_LEDGER_PATH`).
+>
+> The rest of this page is the original plan, kept for the design reasoning.
+
+Status: **planned 2026-09-28**, approved by the owner. It starts after the VPS move.
 Reference: [`coach/coach-reference.jpg`](coach/coach-reference.jpg). An AI-generated pixel image on a
 fake checkerboard background (it's a JPEG with no transparency). **It's a reference only:** Coach is
 redrawn smooth, in Dex's style.
@@ -8,7 +17,7 @@ redrawn smooth, in Dex's style.
 ## What it is
 
 The charm gets a second character. **Coach Beard** is the `coach` Hermes profile: fantasy football
-research, a Zone Read second opinion, and start/sit calls. Ask "Coach, …", or ask something clearly
+research, a second opinion from a fantasy-analysis tool, and start/sit calls. Ask "Coach, …", or ask something clearly
 about fantasy or the NFL, and Coach answers, in his own body, voice and conversation history.
 Everything else still goes to Dex.
 
@@ -35,7 +44,7 @@ The only fantasy-specific changes:
 2. **Two Coach-only surfaces:**
    - **"Coach is on it."** A walk-away working state. His answers take about 3 minutes (measured:
      167 s), so the charm lets you put it down; Dex's Working screen assumes a few seconds.
-   - **"Coach's call."** The start/sit verdict (one line, 32 px), the deadline in Chicago� time, and
+   - **"Coach's call."** The start/sit verdict (one line, 32 px), the deadline in local time, and
      the flip condition ("Flip only if Purdy is out before Sun 12:00"). The actions are *Got it* /
      *Why?*. It reuses the Decision layout.
 3. **Watch the accent.** His orange jacket and beanie sit close to the gold `#F2C14E`. § 11.7 rule 5
@@ -49,10 +58,10 @@ reading mode for him either.
 ## Backend: how the charm reaches Coach
 
 Facts, checked 2026-09-28:
-- `coach` runs its own s6 gateway (Telegram + Bot Chat).
+- `coach` runs its own s6 gateway (its own chat channels).
 - **His API server isn't enabled.** Only Dex's `/opt/data/.env` carries `API_SERVER_KEY`.
 - His config **enforces** a read-only toolset on every platform, including `api_server`: `web`,
-  `skills`, `zone_read` and `coach_local`, with `file`/`terminal`/`code_execution`/… disabled.
+  `skills`, a fantasy-data tool and `coach_local`, with `file`/`terminal`/`code_execution`/… disabled.
   That's stronger than Dex's behavioral "read, don't act".
 - `hermes -p coach -z "<question>"` (docker exec) works today with no Hermes change. One live
   lineup question took **167 s** and gave a correct, in-character answer.
@@ -76,7 +85,7 @@ card (a decision variant with `data.flip_if`); `job` cards reused for "on it".
 
 ## Order
 
-1. Move the charm server to the VPS (next to Hermes, Coach and os-api).
+1. Move the charm server to the VPS (next to Hermes, Coach and the notes service).
 2. The owner decides A vs B.
 3. A Coach design mini-sprint, using this brief + the reference, in the design session.
 4. The build round above, then a live test on game day.
