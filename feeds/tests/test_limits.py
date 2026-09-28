@@ -32,7 +32,7 @@ def test_clip_hard_cuts_a_single_long_word() -> None:
 
 def test_clean_drops_emoji_and_markdown() -> None:
     assert clean("☕ **Why** did `today` ⚙️ run? 😺") == "Why did today run?"
-    assert clean("Chicago� 19°C — ok") == "Chicago� 19°C — ok"
+    assert clean("Springfield 19°C — ok") == "Springfield 19°C — ok"
 
 
 def test_oversized_content_still_validates(feed_dir: Path, validator: CardValidator) -> None:

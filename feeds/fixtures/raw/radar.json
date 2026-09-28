@@ -1,0 +1,61 @@
+{
+  "desk": "radar",
+  "generated_at": "2026-09-20T19:02:22+00:00",
+  "fresh_until": "2026-09-22T01:02:22+00:00",
+  "status": "ok",
+  "summary_line": "Drift control beat another scanner; the garden sensor moved, while the recipe app's buyer test did not.",
+  "telegram_line": "The garden sensor is ready for the field, the recipe app's buyer test is still open, and one security tool is worth a contained trial.",
+  "md_path": "/data/inbox/2026-09-20-weekly-radar.md",
+  "sections": {
+    "saves": [
+      {
+        "title": "Tool-approval lockfiles and drift refusal",
+        "url": "https://example.com/radar/lockfiles",
+        "tldr": "Fingerprints approved agent tools and definitions, then refuses unapproved drift.",
+        "verdict": "read in full — the enforcement model is the useful part"
+      },
+      {
+        "title": "An open-source sports-data stack for agents",
+        "url": "https://example.com/radar/sports-stack",
+        "tldr": "A data stack with backtests and upstream contract checks; generic chat on top is already commodity territory.",
+        "verdict": "read in full — focus on backtesting and freshness, not tool count"
+      },
+      {
+        "title": "Hosted multi-platform connectors",
+        "url": "https://example.com/radar/connectors",
+        "tldr": "Hosted access to several platforms for chat assistants, with onboarding and an analyst skill.",
+        "verdict": "skim — inspect onboarding and distribution"
+      },
+      {
+        "title": "Agent security scanner for IDEs",
+        "url": "https://example.com/radar/scanner",
+        "tldr": "Static agent scanning plus signed snapshots and diffs for configuration drift.",
+        "verdict": "skim — read the architecture, skip the overview"
+      },
+      {
+        "title": "Agent inventory scan",
+        "url": "https://example.com/radar/inventory",
+        "tldr": "Broad inventory across agents, tool servers and skills, with a real execution risk during discovery.",
+        "verdict": "skim — useful, but only inside containment"
+      }
+    ],
+    "themes": [
+      "Agent security is moving from one-time inspection to admission plus continuous drift enforcement.",
+      "The generic assistant lane is crowded; proactive execution and fresh evidence are the defensible wedge.",
+      "Real-device and live-data checks keep catching defects that green suites cannot."
+    ],
+    "play_with": {
+      "title": "Tool-approval lockfiles",
+      "url": "https://example.com/radar/lockfiles",
+      "why_now": "It targets the approval-drift gap surfaced by this week's reading.",
+      "session": "After Thursday's build, run a 30-minute safe-mode scan against a disposable profile copy; no live install."
+    },
+    "actions": [
+      "Today: Run the garden-sensor field test with Wi-Fi off and record the results.",
+      "Thursday, September 24: Rebuild, reinstall and verify the signing expiry after October 1.",
+      "This week: Record the recipe app's buyer-test verdict; freeze new features until one external buyer appears.",
+      "This week: Mark the old notes tool as paused unless a dated test exists.",
+      "After the build: Have Dex try the lockfile tool in a disposable profile copy, safe mode only."
+    ]
+  }
+}

@@ -19,7 +19,7 @@ RAW = FEEDS_ROOT / "fixtures" / "raw"
 CARDS = FEEDS_ROOT / "fixtures" / "cards"
 # The moment the committed fixture cards were built at (just after the pull on 2026-09-25).
 FIXTURE_NOW = datetime.fromisoformat("2026-09-25T17:30:00+00:00")
-TZ = ZoneInfo("America/Chicago")
+TZ = ZoneInfo("America/Lima")
 
 
 @pytest.fixture(scope="session")

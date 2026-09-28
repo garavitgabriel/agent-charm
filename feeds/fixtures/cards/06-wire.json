@@ -1,0 +1,62 @@
+{
+  "id": "ed-wire",
+  "kind": "edition",
+  "title": "The Wire",
+  "source": "edition",
+  "data": {
+    "section": "wire",
+    "rows": [
+      {
+        "text": "How small teams ship reliable hardware",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "Two model launches on the same day",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "A big company finds its lane in AI",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "A note on this newsletter's pricing",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "Can a charm sell you something?",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "How to build a referral program (and know when you're not ready)",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "[Weekly] The future of on-device models",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "Real-time worlds and the engineering behind them",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "Why systems thinking matters for growth",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "How product teams measure AI fluency",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "What it's like to work at an AI-native company",
+        "stamp": "[sender]"
+      },
+      {
+        "text": "Weekly reading #12",
+        "stamp": "[sender]"
+      }
+    ]
+  },
+  "footer": "Radar desk missed deadline — last filed Sun 14:02",
+  "created_at": "2026-09-25T16:14:19+00:00",
+  "fresh_until": "2026-09-26T16:14:19+00:00"
+}

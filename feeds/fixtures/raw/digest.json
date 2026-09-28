@@ -1,0 +1,34 @@
+{
+  "desk": "digest",
+  "generated_at": "2026-09-25T03:33:19+00:00",
+  "fresh_until": "2026-09-25T15:00:00+00:00",
+  "status": "ok",
+  "summary_line": "Two account notices need a look, and the garden-sensor build is signed but not yet proven on the device.",
+  "telegram_line": "The account notices come first; the garden-sensor build only needs its on-device install proof before the weekend.",
+  "md_path": "/data/inbox/2026-09-24-dex-session-digest.md",
+  "sections": {
+    "what_happened": {
+      "cron": [
+        "Dex filed the garden-sensor release checklist: build 42 is signed and 120 tests are green, but the on-device install and the offline launch remain open.",
+        "Two account-change notices landed one minute apart; Dex filed a read-only triage and took no account or money action.",
+        "Follow-ups for the recipe app and the reading list were staged; none was accepted."
+      ]
+    },
+    "decisions": [
+      "You still owe a check that both account notices are legitimate, in the official app.",
+      "The garden-sensor build stays open until the device install and the offline launch are proven.",
+      "The recipe app should not get another paid test run before its report is readable.",
+      "Four old approval cards, 40 to 134 days old, still wait for a close-or-keep call."
+    ],
+    "patterns": [
+      "The garden-sensor bottleneck moved from features to release proof, and manual checks still lag the automation around them.",
+      "The priorities page is 40 days stale, so the daily board keeps compensating for it."
+    ],
+    "proposals": [
+      "Carry the account checks as a short-lived admin item until they're resolved.",
+      "Keep the garden-sensor build marked signed-but-unproven until the install receipts land.",
+      "Gate the recipe app's next paid run behind a readable report.",
+      "Rewrite the priorities page after the weekend with explicit active, paused and dropped calls."
+    ]
+  }
+}
