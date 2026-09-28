@@ -7,7 +7,7 @@ new file only). You don't need it to run the charm: the server's default note st
 The charm server depends on this package through the `NoteStore` interface in
 `src/charm_notes/__init__.py` (a chief-owned contract, like `docs/PROTOCOL.md`).
 
-See `.parallel-plans/` for the active build brief.
+Build history: `docs/internal/parallel-plans/`.
 
 ## Stores
 
