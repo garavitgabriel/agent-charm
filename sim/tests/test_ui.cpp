@@ -598,7 +598,7 @@ static void test_night_and_modes() {
     run(2000);
     CHECK(charm_ui_debug_night());
     CHECK(charm_ui_debug_surface() == CharmSurface::Night);
-    CHECK_EQ(host.brightness, (uint8_t)16);
+    CHECK(host.brightness < 255 && host.brightness >= 128);  // dimmed, but never double-dimmed
     CHECK(dex_get_pose() == DEX_POSE_ASLEEP);
     charm_ui_talk_pressed();  // any interaction wakes it
     CHECK(!charm_ui_debug_night());

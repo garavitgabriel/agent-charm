@@ -30,7 +30,10 @@ constexpr uint32_t DONE_DECAY_MS = 4000;
 constexpr uint32_t NIGHT_AFTER_MS = 60000;
 constexpr uint32_t SETTING_TIMEOUT_MS = 3000;  // a toggle with no echo springs back, changing nothing
 constexpr uint8_t BRIGHT_DAY = 255;
-constexpr uint8_t BRIGHT_NIGHT = 16;
+// Night is dimmed by the DESIGN (PAL_NIGHT sprites, LINE_N, no bright elements; tokens.md), so the
+// panel is NOT dimmed again: at 16/255 on top of the night palette Dex was invisible. Tune on the
+// real AMOLED (HARDWARE-TEST); lower only if the night reference still glares in a dark room.
+constexpr uint8_t BRIGHT_NIGHT = 160;
 constexpr int STREAM_LINES = 16;
 constexpr int STREAM_PTS = 7;
 
