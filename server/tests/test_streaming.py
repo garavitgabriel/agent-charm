@@ -285,7 +285,7 @@ async def test_cancel_while_thinking_before_any_sentence(harness: Harness) -> No
     await dev.talk(tone(1.0))
     await dev.until(lambda m: m.get("value") == "working")
     await dev.send({"type": "cancel"})
-    assert await dev.recv() == {"type": "state", "value": "idle"}
+    assert await dev.recv() == {"type": "state", "value": "idle", "agent": "dex"}
     assert await dev.silent_for(0.8) == []
     assert tts.calls == []
 

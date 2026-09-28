@@ -21,6 +21,7 @@ from . import protocol as p
 from .agent import Agent, HermesAgent
 from .books import BookStore
 from .cards import CardValidator
+from .coach import COACH_TIMEOUT_SECONDS, CoachDesk, ContainerLedger
 from .config import Config
 from .hermes import HermesChannel
 from .notestore import make_store
@@ -126,25 +127,52 @@ async def run(config: Config, warm: bool) -> None:
         agent = channel
     else:
         agent = HermesAgent(config.hermes_ssh_alias, config.hermes_container)
+    # Coach Beard: his own channel (same transport; his key read inside the container from his
+    # profile's .env, his port), his read-only ledger for the fast path, and his own voice.
+    coach_channel: HermesChannel | None = None
+    if config.coach_enabled:
+        coach_channel = HermesChannel(
+            config.hermes_ssh_alias,
+            config.hermes_container,
+            timeout=COACH_TIMEOUT_SECONDS,
+            name="Coach",
+            env_file=config.coach_env_path,
+            port=config.coach_port,
+        )
+    validator = CardValidator(config.schema_path)
+    coach = CoachDesk(
+        coach_channel,
+        config.tz,
+        path=config.coach_jobs_path,
+        ledger=ContainerLedger(
+            config.hermes_ssh_alias, config.hermes_container, config.coach_ledger_path
+        ),
+        validate=validator.check,
+    )
     deps = Deps(
         config=config,
         stt=stt,
         agent=agent,
         tts=EdgeTTS(config.voice_en, config.voice_es),
-        validator=CardValidator(config.schema_path),
+        validator=validator,
         books=BookStore(config.books_path),
         notes=make_store(config.notes_backend),
+        coach=coach,
+        coach_tts=EdgeTTS(config.coach_voice_en, config.coach_voice_es),
     )
     try:
         warmups = []
         if channel is not None:
             warmups.append(channel.start())  # opens the SSH channel to Dex while Whisper loads
+        if coach_channel is not None:
+            warmups.append(coach_channel.start())
         if warm:
             warmups.append(asyncio.to_thread(stt.load))
         await asyncio.gather(*warmups)
         async with await start(deps, config.host, config.port) as server:
             log.info(
-                "%s listening on ws://%s:%d%s (cards: %s, dex: %s, notes: %s, reading: %s)",
+                "%s listening on ws://%s:%d%s (cards: %s, dex: %s, notes: %s, reading: %s, "
+                "coach: %s)",
                 SERVER_ID,
                 config.host,
                 config.port,
@@ -153,9 +181,13 @@ async def run(config: Config, warm: bool) -> None:
                 "persistent channel" if channel else "ssh per question",
                 config.notes_backend,
                 deps.books.mode,
+                f"port {config.coach_port}" if coach_channel else "off",
             )
             await server.serve_forever()
     finally:
+        await coach.close()
+        if coach_channel is not None:
+            await coach_channel.close()
         if channel is not None:
             await channel.close()
 

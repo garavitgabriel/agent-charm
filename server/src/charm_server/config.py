@@ -46,6 +46,10 @@ def _path(name: str, default: Path) -> Path:
     return path if path.is_absolute() else (SERVER_DIR / path).resolve()
 
 
+def _flag(value: str) -> bool:
+    return value.strip().lower() not in ("0", "false", "no", "off", "")
+
+
 @dataclass(frozen=True)
 class Config:
     token: str
@@ -63,6 +67,15 @@ class Config:
     hermes_channel: bool = True
     books_path: Path | None = None  # None: reading state in memory only (tests)
     notes_backend: str = "osapi"
+    # Coach Beard (the `coach` Hermes profile). Disabled (tests, or COACH_ENABLED=0): a Coach
+    # question gets an honest notice. The env file and ledger are paths INSIDE the container.
+    coach_enabled: bool = False
+    coach_env_path: str = "/opt/data/profiles/coach/.env"
+    coach_port: int = 8644
+    coach_ledger_path: str = "/opt/data/profiles/coach/data/decisions/decisions.jsonl"
+    coach_voice_en: str = "en-US-ChristopherNeural"
+    coach_voice_es: str = "es-MX-JorgeNeural"
+    coach_jobs_path: Path | None = None  # None: walk-away jobs in memory only (tests)
 
     @classmethod
     def from_env(cls, env_file: Path | None = SERVER_DIR / ".env") -> Config:
@@ -86,4 +99,12 @@ class Config:
             not in ("0", "false", "no"),
             books_path=_path("CHARM_BOOKS", SERVER_DIR / ".local" / "books.json"),
             notes_backend=env.get("CHARM_NOTES", "osapi").strip().lower() or "osapi",
+            coach_enabled=_flag(env.get("COACH_ENABLED", "1")),
+            coach_env_path=env.get("COACH_ENV_PATH") or "/opt/data/profiles/coach/.env",
+            coach_port=int(env.get("COACH_PORT") or "8644"),
+            coach_ledger_path=env.get("COACH_LEDGER_PATH")
+            or "/opt/data/profiles/coach/data/decisions/decisions.jsonl",
+            coach_voice_en=env.get("CHARM_VOICE_COACH_EN") or "en-US-ChristopherNeural",
+            coach_voice_es=env.get("CHARM_VOICE_COACH_ES") or "es-MX-JorgeNeural",
+            coach_jobs_path=_path("COACH_JOBS", SERVER_DIR / ".local" / "coach-jobs.json"),
         )
