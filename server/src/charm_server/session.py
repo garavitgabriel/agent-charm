@@ -7,14 +7,19 @@ import contextlib
 import json
 import logging
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
+
+from charm_notes import Book, Note, NoteStore, SaveReceipt
 
 from . import protocol as p
 from .agent import Agent, AgentError, AgentTimeout, Message, answer_stream, system_messages
+from .books import BookStore
 from .cards import (
     Card,
     CardValidator,
@@ -25,6 +30,17 @@ from .cards import (
     notice_card,
 )
 from .config import Config
+from .intents import EnterReading, LeaveReading, SaveThought, SetChapter, SetSpeech, parse
+from .notestore import UnavailableStore
+from .reading import (
+    EMPTY_SAVE_REASON,
+    LeadSplitter,
+    book_json,
+    not_saved_card,
+    reading_card,
+    reading_messages,
+    saved_card,
+)
 from .stt import STT, TooShort
 from .tts import TTS, TTSError
 
@@ -35,6 +51,8 @@ Send = Callable[[str | bytes], Awaitable[None]]
 HISTORY_TURNS = 8  # question/answer pairs kept per connection
 SAMPLE_ORDER_TEXT = "Sample order: nothing was charged."
 NO_REAL_ORDER_TEXT = "Ordering isn't wired up yet. Nothing was ordered or charged."
+# A backstop over the store's own timeout (the OS API store gives up after 10 s).
+SAVE_TIMEOUT_SECONDS = 30.0
 
 
 @dataclass
@@ -48,6 +66,11 @@ class Deps:
     # Stream speech at real time plus this much lead, so the device's ring buffer never
     # overflows. None sends as fast as possible (tests).
     speech_lead_s: float | None = 1.0
+    # Reading state (shared by every connection) and where "save this" goes.
+    books: BookStore = field(default_factory=BookStore.memory)
+    notes: NoteStore = field(
+        default_factory=lambda: UnavailableStore("no note store is configured")
+    )
 
 
 @dataclass
@@ -110,6 +133,30 @@ class Session:
     async def dismiss(self, card_id: str) -> None:
         self.cards.pop(card_id, None)
         await self.send({"type": "dismiss", "card_id": card_id})
+
+    async def send_mode(self) -> None:
+        """`mode{value, book?}`: the book is present in reading mode."""
+        message: dict[str, Any] = {"type": "mode", "value": self.deps.books.mode}
+        reading = self.deps.books.reading
+        if reading is not None:
+            message["book"] = book_json(reading.book)
+        await self.send(message)
+
+    async def send_setting(self, name: str) -> None:
+        """Echo the *effective* value; the device shows state only from this echo."""
+        books = self.deps.books
+        value = books.speech_value if name == "speech" else books.mode
+        await self.send({"type": "setting", "name": name, "value": value})
+
+    async def greet(self) -> None:
+        """On connect: restore an active reading session (it outlives connections)."""
+        if self.deps.books.reading is not None:
+            await self.send_mode()
+            await self.send_setting("speech")
+
+    async def _mode_changed(self) -> None:
+        await self.send_mode()
+        await self.send_setting("speech")  # each mode has its own speech default
 
     # --- receiving ---------------------------------------------------------------------------
 
@@ -235,6 +282,32 @@ class Session:
     async def _on_event(self, message: dict[str, Any]) -> None:
         log.info("device event %s value=%r", message.get("name"), message.get("value"))
 
+    async def _on_setting(self, message: dict[str, Any]) -> None:
+        name = message.get("name")
+        value = message.get("value")
+        books = self.deps.books
+        if name == "speech":
+            if value in p.SPEECH_VALUES:
+                books.set_speech(str(value))
+            else:
+                log.info("setting speech=%r ignored", value)
+            await self.send_setting("speech")
+            return
+        if name == "mode":
+            before = books.mode
+            if value == "reading":
+                if books.resume() is None:
+                    log.info("setting mode=reading with no book on record; staying in default")
+            elif value == "default":
+                books.leave()
+            else:
+                log.info("setting mode=%r ignored", value)
+            if books.mode != before:
+                await self._mode_changed()
+            await self.send_setting("mode")
+            return
+        log.info("ignoring unknown setting %r", name)
+
     async def _on_action(self, message: dict[str, Any]) -> None:
         card_id = message.get("card_id")
         action_id = message.get("action")
@@ -336,13 +409,28 @@ class Session:
                 await self._fail("no_speech", "I didn't catch any words. Try again?")
                 return
             await self.send({"type": "transcript", "text": heard.text, "final": True})
+            books = self.deps.books
+            intent = parse(heard.text, reading=books.reading is not None)
+            if intent is not None:
+                log.info("intent %s", type(intent).__name__)
+                await self._command(intent, heard.language)
+                return
             await self.send_state("working", agent="dex")
 
             question: Message = {"role": "user", "content": heard.text}
-            messages = system_messages(heard.language) + self.history + [question]
+            reading = books.reading
+            book = reading.book if reading is not None else None
+            splitter: SpeechSplitter | LeadSplitter
+            if book is not None:
+                messages = [*reading_messages(book, heard.language, books.turns()), question]
+                splitter = LeadSplitter()  # only the lead is ever spoken
+            else:
+                messages = system_messages(heard.language) + self.history + [question]
+                splitter = SpeechSplitter()
             card_id = new_answer_id()
-            speaker = _Speaker(self, heard.language, card_id)
-            splitter = SpeechSplitter()
+            # Quiet (speech off): no speech_start/speech_end at all, just the card.
+            if books.speech_value == "on":
+                speaker = _Speaker(self, heard.language, card_id)
             parts: list[str] = []
             asked = time.monotonic()
             try:
@@ -352,38 +440,51 @@ class Session:
                             timings.agent_first = time.monotonic() - asked
                         parts.append(piece)
                         for sentence in splitter.feed(piece):
-                            speaker.say(sentence)
+                            if speaker is not None:
+                                speaker.say(sentence)
             except (TimeoutError, AgentTimeout):
-                await speaker.abort()
+                if speaker is not None:
+                    await speaker.abort()
                 await self._fail("agent_timeout", "Dex didn't answer within 120 seconds.")
                 return
             except AgentError as exc:
-                await speaker.abort()
+                if speaker is not None:
+                    await speaker.abort()
                 await self._fail("agent_error", str(exc) or "Dex couldn't answer.")
                 return
             reply = "".join(parts).strip()
             if not reply:
-                await speaker.abort()
+                if speaker is not None:
+                    await speaker.abort()
                 await self._fail("agent_error", "Dex sent an empty answer.")
                 return
             for sentence in splitter.finish():
-                speaker.say(sentence)
-            speaker.end()
+                if speaker is not None:
+                    speaker.say(sentence)
+            if speaker is not None:
+                speaker.end()
             timings.agent = time.monotonic() - asked
-            self.history += [question, {"role": "assistant", "content": reply}]
-            self.history = self.history[-2 * HISTORY_TURNS :]
-
-            card = answer_card(heard.text, reply, heard.language, self.deps.config.tz, card_id)
-            speaker.answer_complete = True
+            tz = self.deps.config.tz
+            if book is not None:
+                books.add_turn(book.title, heard.text, reply)  # this book's own context
+                card = reading_card(heard.text, reply, heard.language, tz, book, card_id)
+            else:
+                self.history += [question, {"role": "assistant", "content": reply}]
+                self.history = self.history[-2 * HISTORY_TURNS :]
+                card = answer_card(heard.text, reply, heard.language, tz, card_id)
+            if speaker is not None:
+                speaker.answer_complete = True
             try:
                 await self.send_card(card)
             finally:
-                speaker.card_sent.set()
+                if speaker is not None:
+                    speaker.card_sent.set()
 
-            first_audio = await speaker.wait()
-            if first_audio is not None and speaker.first_text is not None:
-                timings.tts = first_audio - speaker.first_text
-                timings.first_audio = first_audio - started
+            if speaker is not None:
+                first_audio = await speaker.wait()
+                if first_audio is not None and speaker.first_text is not None:
+                    timings.tts = first_audio - speaker.first_text
+                    timings.first_audio = first_audio - started
             timings.total = time.monotonic() - started
             self.last_timings = timings
             log.info("talk timings %s", timings.line())
@@ -394,6 +495,75 @@ class Session:
         finally:
             if speaker is not None:
                 await speaker.abort()
+
+    async def _command(
+        self, intent: EnterReading | SetChapter | LeaveReading | SaveThought | SetSpeech, lang: str
+    ) -> None:
+        """A rule-based intent: handled here, never sent to Dex."""
+        books = self.deps.books
+        if isinstance(intent, SaveThought):
+            await self._save(intent.text, lang)
+            return
+        if isinstance(intent, EnterReading):
+            before = books.mode
+            books.enter(intent.title, intent.author, intent.chapter)
+            await self.send_mode()
+            if before != "reading":
+                await self.send_setting("speech")
+        elif isinstance(intent, SetChapter):
+            books.set_chapter(intent.chapter)
+            await self.send_mode()
+        elif isinstance(intent, LeaveReading):
+            if books.mode == "reading":
+                books.leave()
+                await self._mode_changed()
+            else:
+                await self.send_mode()  # already out: confirm it anyway
+        elif isinstance(intent, SetSpeech):
+            books.set_speech(intent.value)
+            await self.send_setting("speech")
+        await self.send_state("idle")
+
+    async def _save(self, text: str, language: str) -> None:
+        """Save this thought: working{Saving} → receipt → saved notice + done, or save_failed.
+
+        ✓ / `state{done}` only after the store confirms. The words are saved verbatim.
+        """
+        reading = self.deps.books.reading
+        book: Book | None = reading.book if reading is not None else None
+        tz = self.deps.config.tz
+        card_id = f"ntc-{uuid.uuid4().hex[:10]}"
+        if not text:
+            await self._save_failed(card_id, EMPTY_SAVE_REASON.get(language, ""), language, book)
+            return
+        await self.send_state("working", label="Saving")
+        note = Note(text=text, captured_at=datetime.now(ZoneInfo(tz)), language=language, book=book)
+        try:
+            async with asyncio.timeout(SAVE_TIMEOUT_SECONDS):
+                receipt = await self.deps.notes.save(note)
+        except TimeoutError:
+            receipt = SaveReceipt(
+                ok=False, error=f"the note store didn't confirm within {SAVE_TIMEOUT_SECONDS:g} s."
+            )
+        except Exception as exc:
+            log.warning("note store raised %s", type(exc).__name__)
+            receipt = SaveReceipt(ok=False, error=f"the note store failed ({type(exc).__name__}).")
+        if receipt.ok is not True:
+            await self._save_failed(card_id, receipt.error or "", language, book)
+            return
+        log.info("note saved (%s)", receipt.where)
+        await self.send_card(saved_card(card_id, text, language, tz, book))
+        await self.send_state("done", label="Saved")
+        await self.send_state("idle")
+
+    async def _save_failed(
+        self, card_id: str, reason: str, language: str, book: Book | None
+    ) -> None:
+        reason = reason.strip() or "the note store didn't confirm."
+        log.warning("save failed: %s", reason)
+        await self.send_error("save_failed", f"Not saved: {reason}")
+        await self.send_card(not_saved_card(card_id, reason, language, self.deps.config.tz, book))
+        await self.send_state("idle")
 
     async def _fail(self, code: str, text: str) -> None:
         if self._speaking:  # the answer broke off mid-speech: end it honestly first

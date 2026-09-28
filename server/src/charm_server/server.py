@@ -19,9 +19,11 @@ from websockets.http11 import Request, Response
 from . import SERVER_ID
 from . import protocol as p
 from .agent import Agent, HermesAgent
+from .books import BookStore
 from .cards import CardValidator
 from .config import Config
 from .hermes import HermesChannel
+from .notestore import make_store
 from .session import Deps, Session
 from .stt import WhisperSTT
 from .tts import EdgeTTS
@@ -88,6 +90,7 @@ async def handle(ws: ServerConnection, deps: Deps) -> None:
             }
         )
         await session.send_state("idle")
+        await session.greet()  # an active reading session outlives the connection
         async for frame in ws:
             if isinstance(frame, bytes):
                 await session.handle_binary(frame)
@@ -129,6 +132,8 @@ async def run(config: Config, warm: bool) -> None:
         agent=agent,
         tts=EdgeTTS(config.voice_en, config.voice_es),
         validator=CardValidator(config.schema_path),
+        books=BookStore(config.books_path),
+        notes=make_store(config.notes_backend),
     )
     try:
         warmups = []
@@ -139,13 +144,15 @@ async def run(config: Config, warm: bool) -> None:
         await asyncio.gather(*warmups)
         async with await start(deps, config.host, config.port) as server:
             log.info(
-                "%s listening on ws://%s:%d%s (cards: %s, dex: %s)",
+                "%s listening on ws://%s:%d%s (cards: %s, dex: %s, notes: %s, reading: %s)",
                 SERVER_ID,
                 config.host,
                 config.port,
                 p.PATH,
                 config.cards_dir,
                 "persistent channel" if channel else "ssh per question",
+                config.notes_backend,
+                deps.books.mode,
             )
             await server.serve_forever()
     finally:

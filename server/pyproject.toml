@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12,<3.14"
 # Pinned exactly (brief: "pinned deps"). uv.lock pins the transitive set.
 dependencies = [
+    "charm-notes",
     "edge-tts==7.2.8",
     "faster-whisper==1.2.1",
     "jsonschema==4.26.0",
@@ -50,7 +51,8 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "ASYNC", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = "src"
+# charm_notes (the notes package, a path dependency) ships no py.typed: check it from source.
+mypy_path = "src:../notes/src"
 
 [[tool.mypy.overrides]]
 module = ["faster_whisper.*", "edge_tts.*", "sounddevice.*"]
@@ -60,3 +62,6 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+[tool.uv.sources]
+charm-notes = { path = "../notes", editable = true }
