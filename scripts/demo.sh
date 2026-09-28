@@ -2,12 +2,12 @@
 # Talk to Dex on the Mac, in one command: the charm server + the simulator as a real device.
 #
 #   scripts/demo.sh                          # hold space in the sim window to talk
-#   scripts/demo.sh --no-pull                # skip the Hermes feeds pull (use fixture cards)
+#   scripts/demo.sh --pull                   # refresh the edition from a Hermes desk first
 #   scripts/demo.sh --mic-wav q.wav --auto-talk --trace    # any extra flags go to charm-sim
 #
 # 1. makes sure server/.env has a CHARM_TOKEN (generates a random one; never prints it in full)
-# 2. refreshes the edition cards (charm-feeds pull + build into out/cards, gitignored), falling
-#    back to feeds/fixtures/cards if that fails
+# 2. uses the fixture edition cards; with --pull, refreshes them from a Hermes desk (charm-feeds
+#    pull + build into out/cards, gitignored), falling back to the fixtures if that fails
 # 3. starts charm-server with CHARM_CARDS_DIR pointed at them (log: out/demo/server.log)
 # 4. builds charm-sim and launches it connected, at --scale 2
 # Ctrl-C (or closing the sim window) stops everything.
@@ -17,10 +17,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 ENV_FILE="server/.env"
 DEMO_DIR="out/demo"
-PULL=1
+PULL=0
 SIM_ARGS=()
 for arg in "$@"; do
   case "$arg" in
+    --pull) PULL=1 ;;
     --no-pull) PULL=0 ;;
     -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) SIM_ARGS+=("$arg") ;;
@@ -75,7 +76,7 @@ if [ "$PULL" = 1 ]; then
     CARDS="$FIXTURE_CARDS"
   fi
 else
-  say "--no-pull: using the fixture cards"
+  say "using the fixture cards (--pull refreshes them from a Hermes desk)"
   CARDS="$FIXTURE_CARDS"
 fi
 say "CHARM_CARDS_DIR=${CARDS#"$ROOT"/}"
