@@ -7,10 +7,10 @@ from pathlib import Path
 import pytest
 from conftest import TOOLS, UI
 
-REAL_FONTS = UI / "assets-src" / "fonts.json"  # Instrument Sans, per design § 11.2
-
 from charm_assets import cli, fonts, manifest
 from charm_assets.manifest import FontFace, ManifestError
+
+REAL_FONTS = UI / "assets-src" / "fonts.json"  # Instrument Sans, per design § 11.2
 
 SAMPLE = """/*******************************************************************************
  * Size: 14 px
