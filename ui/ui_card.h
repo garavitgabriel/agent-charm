@@ -27,8 +27,13 @@ struct CardTile {
     std::string value, label;
 };
 
+struct CardBook {
+    std::string title, author, chapter;  // chapter may arrive as a number; kept as text
+    bool present() const { return !title.empty(); }
+};
+
 struct Card {
-    std::string id, title, body, source, footer, created_at;
+    std::string id, title, body, detail, source, footer, created_at;
     CardKind kind = CardKind::Answer;
     bool stale = false;          // producer says the feed missed its deadline
     bool has_fresh_until = false;
@@ -56,7 +61,14 @@ struct Card {
     std::string status;
     float progress = -1;
     std::string link;
+    // reading (PROTOCOL § Reading mode)
+    CardBook book;          // data.book
+    bool has_saved = false; // data.saved present: a save receipt notice
+    bool saved = false;     // true only after the note store confirmed
 };
+
+// Parse a protocol book object ({title, author?, chapter?}); chapter may be a string or a number.
+CardBook ui_book_parse(JsonObjectConst obj);
 
 // The six edition sections, in the protocol's order.
 extern const char *const EDITION_SECTIONS[6];
@@ -69,6 +81,10 @@ const char *card_kind_name(CardKind kind);
 
 // Stale when the producer flagged it, or when wall time is known and past fresh_until.
 bool card_is_stale(const Card &card, bool clock_known, int64_t now_epoch_s);
+
+// The money screen's total as the design sets it: "$51.300" for COP (dots group thousands, no
+// decimals), "$12.50" for other currencies. The currency code is set beside it, not in it.
+std::string ui_format_total(double amount, const std::string &currency);
 
 // "51,300 COP": whole amounts with thousands separators, otherwise two decimals.
 std::string ui_format_money(double amount, const std::string &currency);

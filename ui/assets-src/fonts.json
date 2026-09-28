@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "fonts": {
+    "lv_font_conv": "1.5.3",
+    "bpp": 4,
+    "symbols_file": "../../tools/fonts/lvgl-symbols.ttf",
+    "faces": [
+      {"name": "i400", "file": "fonts/InstrumentSans-Regular.ttf",
+       "sizes": [18, 22, 26],
+       "ranges": ["0x20-0x7E", "0xA0-0xFF", "0x2013-0x2014", "0x2018-0x2019", "0x201C-0x201D", "0x2022", "0x2026"]},
+      {"name": "i500", "file": "fonts/InstrumentSans-Medium.ttf",
+       "sizes": [18, 24, 32, 40],
+       "ranges": ["0x20-0x7E", "0xA0-0xFF", "0x2013-0x2014", "0x2018-0x2019", "0x201C-0x201D", "0x2022", "0x2026"]},
+      {"name": "i600", "file": "fonts/InstrumentSans-SemiBold.ttf",
+       "sizes": [18, 22, 24, 26, 32],
+       "ranges": ["0x20-0x7E", "0xA0-0xFF", "0x2013-0x2014", "0x2018-0x2019", "0x201C-0x201D", "0x2022", "0x2026"]}
+    ]
+  }
+}

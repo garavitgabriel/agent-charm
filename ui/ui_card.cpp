@@ -56,6 +56,7 @@ bool ui_card_parse(JsonObjectConst obj, Card *out) {
     if (!known) return false;
 
     c.body = str(obj["body"]);
+    c.detail = str(obj["detail"]);
     c.source = str(obj["source"]);
     c.footer = str(obj["footer"]);
     c.created_at = str(obj["created_at"]);
@@ -99,9 +100,44 @@ bool ui_card_parse(JsonObjectConst obj, Card *out) {
     c.status = str(d["status"]);
     c.progress = d["progress"] | -1.0f;
     c.link = str(d["link"]);
+    c.book = ui_book_parse(d["book"].as<JsonObjectConst>());
+    c.has_saved = d["saved"].is<bool>();
+    c.saved = d["saved"] | false;
 
     *out = std::move(c);
     return true;
+}
+
+CardBook ui_book_parse(JsonObjectConst obj) {
+    CardBook b;
+    if (obj.isNull()) return b;
+    b.title = str(obj["title"]);
+    b.author = str(obj["author"]);
+    JsonVariantConst ch = obj["chapter"];
+    if (ch.is<const char *>()) {
+        b.chapter = str(ch);
+    } else if (ch.is<long>()) {
+        b.chapter = std::to_string(ch.as<long>());
+    }
+    return b;
+}
+
+std::string ui_format_total(double amount, const std::string &currency) {
+    char buf[48];
+    if (currency == "COP" || currency.empty()) {
+        char digits[32];
+        snprintf(digits, sizeof digits, "%.0f", floor(fabs(amount) + 0.5));
+        std::string grouped;
+        const size_t len = strlen(digits);
+        for (size_t i = 0; i < len; i++) {
+            if (i > 0 && (len - i) % 3 == 0) grouped += '.';
+            grouped += digits[i];
+        }
+        snprintf(buf, sizeof buf, "%s$%s", amount < 0 ? "-" : "", grouped.c_str());
+    } else {
+        snprintf(buf, sizeof buf, "%s$%.2f", amount < 0 ? "-" : "", fabs(amount));
+    }
+    return buf;
 }
 
 bool card_is_stale(const Card &card, bool clock_known, int64_t now_epoch_s) {

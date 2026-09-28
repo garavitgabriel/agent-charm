@@ -1,20 +1,38 @@
 // GENERATED — do not edit. Fonts from lv_font_conv 1.5.3 (--bpp 4 --no-compress).
-// Regenerate: cd tools && uv run charm-assets fonts fixtures/dummy/manifest.json
+// Regenerate: cd tools && uv run charm-assets fonts fonts.json
 // Sources (relative to tools/):
-//   fixtures/dummy/manifest.json (sha256 6923bb80472eee03)
-//   fonts/AtkinsonHyperlegible-Regular.ttf (sha256 7fb917c89019896d)
+//   fonts.json (sha256 5ba35946748e4bee)
 //   fonts/lvgl-symbols.ttf (sha256 ea7c6eeb7a65d6b1)
+//   InstrumentSans-Medium.ttf (sha256 56ba599d12b7cf2f)
+//   InstrumentSans-Regular.ttf (sha256 69fd3f7c467c70c1)
+//   InstrumentSans-SemiBold.ttf (sha256 7151cf505f897e17)
 
 #pragma once
 #include <lvgl.h>
 
 extern "C" {
-// body 14px: AtkinsonHyperlegible-Regular.ttf, ranges 0x20-0x7E,0xA0-0xFF; LV_SYMBOL_: AUDIO OK CLOSE REFRESH MUTE LEFT RIGHT WARNING CHARGE BELL WIFI BATTERY_FULL BATTERY_3 BATTERY_2 BATTERY_1 BATTERY_EMPTY
-extern const lv_font_t charm_font_body_14;
-// body 18px: AtkinsonHyperlegible-Regular.ttf, ranges 0x20-0x7E,0xA0-0xFF; LV_SYMBOL_: AUDIO OK CLOSE REFRESH MUTE LEFT RIGHT WARNING CHARGE BELL WIFI BATTERY_FULL BATTERY_3 BATTERY_2 BATTERY_1 BATTERY_EMPTY
-extern const lv_font_t charm_font_body_18;
-// body 24px: AtkinsonHyperlegible-Regular.ttf, ranges 0x20-0x7E,0xA0-0xFF; LV_SYMBOL_: AUDIO OK CLOSE REFRESH MUTE LEFT RIGHT WARNING CHARGE BELL WIFI BATTERY_FULL BATTERY_3 BATTERY_2 BATTERY_1 BATTERY_EMPTY
-extern const lv_font_t charm_font_body_24;
-// body 32px: AtkinsonHyperlegible-Regular.ttf, ranges 0x20-0x7E,0xA0-0xFF; LV_SYMBOL_: AUDIO OK CLOSE REFRESH MUTE LEFT RIGHT WARNING CHARGE BELL WIFI BATTERY_FULL BATTERY_3 BATTERY_2 BATTERY_1 BATTERY_EMPTY
-extern const lv_font_t charm_font_body_32;
+// i400 18px: InstrumentSans-Regular.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i400_18;
+// i400 22px: InstrumentSans-Regular.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i400_22;
+// i400 26px: InstrumentSans-Regular.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i400_26;
+// i500 18px: InstrumentSans-Medium.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i500_18;
+// i500 24px: InstrumentSans-Medium.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i500_24;
+// i500 32px: InstrumentSans-Medium.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i500_32;
+// i500 40px: InstrumentSans-Medium.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i500_40;
+// i600 18px: InstrumentSans-SemiBold.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i600_18;
+// i600 22px: InstrumentSans-SemiBold.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i600_22;
+// i600 24px: InstrumentSans-SemiBold.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i600_24;
+// i600 26px: InstrumentSans-SemiBold.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i600_26;
+// i600 32px: InstrumentSans-SemiBold.ttf, ranges 0x20-0x7E,0xA0-0xFF,0x2013-0x2014,0x2018-0x2019,0x201C-0x201D,0x2022,0x2026; LV_SYMBOL_: none
+extern const lv_font_t charm_font_i600_32;
 }
