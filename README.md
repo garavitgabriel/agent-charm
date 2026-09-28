@@ -187,6 +187,31 @@ Coach Beard is the worked example. His design is in
 `charm-assets export-coach` ([`tools/README.md`](tools/README.md) → Coach), and the server side is
 the optional `COACH_*` settings ([`docs/COACH.md`](docs/COACH.md)).
 
+### About Coach Beard
+
+Coach Beard is the author's fantasy-football sub-agent. In the original setup he's a second agent
+profile that researches the author's league and makes one start/sit call at a time, while Dex handles
+everything else. He ships here as the worked example and stays off until you set `COACH_ENABLED=1`.
+The NFL names in his fixtures and tests are sample data.
+
+### Example: adding a second agent of your own
+
+Say you want a cooking agent, **Chef**, next to Dex. Follow the path Coach took:
+
+1. **Draw him** to the character-swap contract above, render his frames and compile them the way
+   `charm-assets export-coach` does for Coach (`ui/assets-src/coach/` has the layout). On the device
+   side, add `DEX_CHARACTER_CHEF` in [`ui/dex_sprite.h`](ui/dex_sprite.h) and `"chef"` in
+   `CHARACTER_NAMES` in [`ui/dex_sprite.cpp`](ui/dex_sprite.cpp).
+2. **Speak his name on the wire.** The server sends `state{…, agent:"chef"}` and
+   `mode{…, agent:"chef"}`, and his cards carry `source:"chef"` ([`docs/PROTOCOL.md`](docs/PROTOCOL.md)
+   § Agents). The device crossfades to his character on the anchor, as it does for Coach.
+3. **Route to him.** In [`server/src/charm_server/routing.py`](server/src/charm_server/routing.py),
+   add `"chef"` to `AGENTS` and a rule: a wake word ("Chef, …") and, if you like, a narrow topic
+   test. Give him a persona appendix and a voice, the way `coach.py` and the `COACH_*` settings in
+   `config.py` do.
+4. **Watch the handover** in the simulator with a replay modelled on
+   [`sim/replays/coach.jsonl`](sim/replays/coach.jsonl).
+
 ## Principles
 
 - **Never fake listening.** The listening pose appears only while the mic is capturing.

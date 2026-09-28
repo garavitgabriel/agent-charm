@@ -67,9 +67,8 @@ reading-companion prototype.
 > Dex on 2026-09-25 ("definitely smooth, it looks and feels more premium"). The canonical character is
 > the code in [`design/character/smooth/`](design/character/smooth/) (`dex.py` parts, `sheet.py`
 > poses), with the reference sheet [`design/character/dex-smooth-sheet.png`](design/character/dex-smooth-sheet.png).
-> The original pixel reference, [`design/character/dex-reference.png`](design/character/dex-reference.png),
-> now defines **identity only** (hair, beard, teal jacket, bag, badge, mug, phone, ringed-planet
-> logo). The final pose list, placement and the character-swap contract are in **§ 11 Design**. The
+> The original pixel reference (not published in this repo) now defines **identity only** (hair,
+> beard, teal jacket, bag, badge, mug, phone, ringed-planet logo). The final pose list, placement and the character-swap contract are in **§ 11 Design**. The
 > pixel-era tasks below are kept for history.
 
 Identity: messy dark-brown hair, short beard, teal jacket over a white shirt, black trousers,
