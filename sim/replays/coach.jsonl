@@ -1,0 +1,24 @@
+# Coach Beard's walk-away job (PROTOCOL § Agents, batch 14): on it -> put it down -> his call, no speech.
+# Run: build/sim/charm-sim --replay sim/replays/coach.jsonl   (or --headless --replay)
+{"type":"welcome","server":"charm-sim proto/0","time":"2026-09-28T12:00:00-05:00","tz":"America/Chicago"}
+{"type":"state","value":"idle"}
+{"_sim":"talk","value":"press"}
+{"_sim":"wait","ms":2500}
+{"_sim":"talk","value":"release"}
+{"type":"state","value":"transcribing"}
+{"type":"transcript","text":"Coach, Purdy or Maye this week?","final":true}
+{"type":"mode","value":"default","agent":"coach"}
+{"type":"state","value":"working","agent":"coach","label":"Coach is on it"}
+{"type":"card","card":{"id":"coach-job-001","kind":"job","title":"Coach is on it","body":"Checking injury reports and your matchup.","source":"coach","created_at":"2026-09-28T12:00:00-05:00","data":{"status":"running"}}}
+{"_sim":"wait","ms":4000}
+{"type":"card","card":{"id":"coach-call-001","kind":"decision","title":"QB this week","body":"Keep Purdy over Maye.","source":"coach","created_at":"2026-09-28T12:03:00-05:00","data":{"default":"Start Purdy","deadline":"Sun 12:00","flip_if":"Flip only if Purdy is out before Sun 12:00"},"actions":[{"id":"hear","label":"Hear it","style":"primary"},{"id":"why","label":"Why?","style":"secondary"},{"id":"later","label":"Later","style":"secondary"}]}}
+{"type":"dismiss","card_id":"coach-job-001"}
+{"type":"state","value":"attention","agent":"coach"}
+{"_sim":"wait","ms":3000}
+{"type":"state","value":"speaking","agent":"coach"}
+{"type":"speech_start","rate":16000,"format":"s16le","channels":1,"card_id":"coach-call-001"}
+{"_sim":"wait","ms":2000}
+{"type":"speech_end"}
+{"type":"state","value":"idle","agent":"coach"}
+{"type":"dismiss","card_id":"coach-call-001"}
+{"type":"mode","value":"default","agent":"dex"}

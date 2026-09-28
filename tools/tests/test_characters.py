@@ -162,25 +162,121 @@ def test_a_character_manifest_is_compiled_through_dexs(tmp_path: Path) -> None:
         manifest.load(tmp_path / "coach/manifest.json")
 
 
-# ---------------------------------------------------------------- the committed dummy Coach
+# ---------------------------------------------------------------- the committed Coach (real)
+
+DESIGN_COACH = UI.parent / "docs/design/final/coach"
+# The poses the design draws (coach.md § Poses and frames); the rest stay on the placeholder.
+COACH_POSES = {
+    "idle": 3,
+    "listening": 2,
+    "working": 2,
+    "speaking": 2,
+    "attention": 1,
+    "done": 4,
+    "ask_yes": 1,
+    "asleep": 3,
+    "offline": 1,
+    "error": 1,
+}
 
 
-def test_committed_coach_is_the_dummy_test_card(tmp_path: Path) -> None:
-    """ui/assets-src/coach is exactly `charm-assets dummy-coach` (until the design's Coach lands:
-    then this test goes with it), and it covers at least idle, listening, working and speaking."""
+def test_committed_coach_is_the_real_export(tmp_path: Path) -> None:
+    """ui/assets-src/coach is exactly `charm-assets export-coach docs/design/final/coach/frames`
+    (+ frames-extra): the design's Coach, not the dummy, covering every pose the design draws, with
+    his blinks and the idle glance."""
     shutil.copytree(DEX_DIR, tmp_path / "dex", ignore=shutil.ignore_patterns("frames"))
     out = tmp_path / "coach"
-    assert cli.main(["dummy-coach", "--out", str(out), "--no-compile"]) == 0
-    assert (out / "manifest.json").read_bytes() == COACH_MANIFEST.read_bytes()
-    made = sorted(p.name for p in (out / "frames").iterdir())
-    assert made == sorted(p.name for p in (COACH_DIR / "frames").iterdir())
-    for name in made:
+    src = DESIGN_COACH / "frames"
+    assert cli.main(["export-coach", str(src), "--out", str(out), "--no-compile"]) == 0
+    made = json.loads((out / "manifest.json").read_text())
+    committed = json.loads(COACH_MANIFEST.read_text())
+    made.pop("_generated")
+    committed.pop("_generated")
+    assert made == committed
+    names = sorted(p.name for p in (out / "frames").iterdir())
+    assert names == sorted(p.name for p in (COACH_DIR / "frames").iterdir())
+    for name in names:
         assert (out / "frames" / name).read_bytes() == (COACH_DIR / "frames" / name).read_bytes()
+    # The design's pixels, untouched: every frame is the design's render (cells on #000).
+    for p in src.glob("*.png"):
+        with Image.open(p) as a, Image.open(COACH_DIR / "frames" / p.name) as b:
+            assert a.convert("RGB").tobytes() == b.convert("RGB").tobytes()
     spec = manifest.load(DEX_MANIFEST).sprites
     assert isinstance(spec, manifest.SmoothSpec)
     (c,) = spec.others
-    assert {a.pose for a in c.animations} >= {"idle", "listening", "working", "speaking"}
-    assert all(len(a.frames) >= 2 for a in c.animations)
+    got = {a.pose: len(a.frames) for a in c.animations if a.outfit == "default"}
+    assert got == COACH_POSES
+    anims = {a.pose: a for a in c.animations}
+    for pose in ("idle", "listening", "speaking", "attention", "ask_yes", "offline", "error"):
+        assert anims[pose].blink, pose  # every open-eyed pose blinks
+    for pose in ("working", "done", "asleep"):
+        assert anims[pose].blink is None, pose  # eyes down, creased or shut: no blink art
+    assert anims["idle"].sip is not None  # the glance, in Dex's sip slot
+    # Nothing of the dummy is left.
+    assert all("dummy" not in n for n in names)
+    for p in (COACH_DIR / "frames").glob("*.png"):
+        with Image.open(p) as im:
+            colors = {col for _, col in im.convert("RGB").getcolors(1 << 18) or []}
+        assert coach.NAVY not in colors or coach.ORANGE not in colors
+
+
+def test_export_coach_takes_blinks_and_the_glance(tmp_path: Path) -> None:
+    """frames-extra/ naming: <frame>-half|closed.png and idle-glance[-n].png, next to SRC or in it.
+    A frame without its own pair borrows a sibling's eyelids only when the faces match."""
+    src, out = _export_env(tmp_path)
+    base = coach.dummy_frame("idle", 0)
+    base.save(src / "idle-0.png")
+    swing = base.copy()
+    swing.paste((200, 200, 200), (70, 180, 80, 190))  # differs away from the eyes
+    swing.save(src / "idle-1.png")
+    half, closed = base.copy(), base.copy()
+    half.paste((1, 2, 3), (60, 60, 90, 66))
+    closed.paste((4, 5, 6), (60, 60, 90, 70))
+    extra = tmp_path / "frames-extra"
+    extra.mkdir()
+    half.save(extra / "idle-0-half.png")
+    closed.save(extra / "idle-0-closed.png")
+    coach.dummy_frame("idle", 1).save(extra / "idle-glance.png")
+    coach.dummy_frame("speaking", 0).save(src / "speaking-0.png")
+    coach.dummy_frame("speaking", 1).save(src / "speaking-1.png")
+    coach.dummy_frame("speaking", 0).save(src / "speaking-0-half.png")  # only frame 0: no blink
+    coach.dummy_frame("speaking", 0).save(src / "speaking-0-closed.png")
+    assert cli.main(["export-coach", str(src), "--out", str(out), "--no-compile"]) == 0
+    raw = json.loads((out / "manifest.json").read_text())["sprites"]
+    anims = {a["pose"]: a for a in raw["animations"]}
+    assert anims["idle"]["blink"] == [
+        ["idle-0-half", "idle-0-closed"],
+        ["idle-1-half", "idle-1-closed"],
+    ]
+    assert [f["frame"] for f in anims["idle"]["sip"]] == ["idle-glance-0"]
+    assert "blink" not in anims["speaking"]  # speaking-1 has no pair and a different face
+    with Image.open(out / "frames/idle-1-half.png") as im:
+        want = swing.copy()
+        want.paste(half.crop((60, 60, 90, 70)), (60, 60))
+        assert im.tobytes() == want.tobytes()
+
+
+@pytest.mark.parametrize(
+    ("name", "message"),
+    [
+        ("idle-3-half.png", "has no idle-3.png"),
+        ("working-glance.png", "only idle has a glance"),
+    ],
+)
+def test_export_coach_refuses_bad_extras(tmp_path: Path, name: str, message: str) -> None:
+    src, out = _export_env(tmp_path)
+    coach.dummy_frame("idle", 0).save(src / "idle-0.png")
+    coach.dummy_frame("idle", 0).save(src / name)
+    with pytest.raises(ManifestError, match=message):
+        coach.export(src, out, "x")
+
+
+def test_export_coach_wants_both_lids(tmp_path: Path) -> None:
+    src, out = _export_env(tmp_path)
+    coach.dummy_frame("idle", 0).save(src / "idle-0.png")
+    coach.dummy_frame("idle", 0).save(src / "idle-0-half.png")
+    with pytest.raises(ManifestError, match=r"both -half\.png and -closed\.png"):
+        coach.export(src, out, "x")
 
 
 def test_dummy_coach_is_clearly_not_coach() -> None:
@@ -302,4 +398,7 @@ def test_strips_include_the_dummy_coach(tmp_path: Path) -> None:
 def test_check_reports_each_characters_placeholders(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["check", str(DEX_MANIFEST)]) == 0
     text = capsys.readouterr().out
-    assert "coach: gray placeholder for" in text and "done/default" in text
+    assert "coach: gray placeholder for" in text
+    coach_line = text[text.index("coach: gray placeholder for") :].splitlines()[0]
+    assert "offer_bag/default" in coach_line and "show_phone/default" in coach_line  # Dex's alone
+    assert "done/default" not in coach_line  # the design's Coach draws his nod

@@ -69,6 +69,10 @@ constexpr lv_coord_t DEX_HIP_X = 236, DEX_HIP_Y = 379;
 constexpr lv_area_t BAG_PREVIEW = {205, 332, 267, 403};  // 06: the bag at his chest (the hold target)
 constexpr lv_area_t BAG_LIFT = {272, 227, 333, 305};     // 07: the bag overhead, filling
 constexpr lv_area_t HAND_CUP = {296, 296, 316, 316};     // 02: the cupped hand the stream lands in
+// Coach's listening hand is pressed to his headset's ear cup, not cupped like Dex's (batch 14:
+// measured from docs/design/final/coach/frames/listening-0/1.png, hand + ear cup at cell (112..140,
+// 70..95) -> screen). His frames carry no points, so the stream always lands here for Coach.
+constexpr lv_area_t COACH_HEADSET = {280, 290, 298, 310};
 constexpr lv_coord_t PLACARD_CX = 307, PLACARD_CY = 261; // 05: the "Yes" placard's face
 
 }  // namespace tok

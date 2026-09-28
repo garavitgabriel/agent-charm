@@ -1,6 +1,6 @@
 {
  "version": 1,
- "_generated": "cd tools && uv run charm-assets dummy-coach  (do not edit by hand)",
+ "_generated": "cd tools && uv run charm-assets export-coach ../docs/design/final/coach/frames  (do not edit by hand)",
  "_notes": [
   "Coach's character manifest: Dex's cell and anchor, Dex's motion timing per pose.",
   "Compiled with Dex's: cd tools && uv run charm-assets sprites ../ui/assets-src/dex/manifest.json",
@@ -27,12 +27,60 @@
     "file": "frames/idle-1.png",
     "points": {}
    },
+   "idle-2": {
+    "file": "frames/idle-2.png",
+    "points": {}
+   },
+   "idle-0-half": {
+    "file": "frames/idle-0-half.png",
+    "points": {}
+   },
+   "idle-0-closed": {
+    "file": "frames/idle-0-closed.png",
+    "points": {}
+   },
+   "idle-1-half": {
+    "file": "frames/idle-1-half.png",
+    "points": {}
+   },
+   "idle-1-closed": {
+    "file": "frames/idle-1-closed.png",
+    "points": {}
+   },
+   "idle-2-half": {
+    "file": "frames/idle-2-half.png",
+    "points": {}
+   },
+   "idle-2-closed": {
+    "file": "frames/idle-2-closed.png",
+    "points": {}
+   },
+   "idle-glance-0": {
+    "file": "frames/idle-glance-0.png",
+    "points": {}
+   },
    "listening-0": {
     "file": "frames/listening-0.png",
     "points": {}
    },
    "listening-1": {
     "file": "frames/listening-1.png",
+    "points": {}
+   },
+   "listening-0-half": {
+    "file": "frames/listening-0-half.png",
+    "points": {}
+   },
+   "listening-0-closed": {
+    "file": "frames/listening-0-closed.png",
+    "points": {}
+   },
+   "listening-1-half": {
+    "file": "frames/listening-1-half.png",
+    "points": {}
+   },
+   "listening-1-closed": {
+    "file": "frames/listening-1-closed.png",
     "points": {}
    },
    "working-0": {
@@ -43,8 +91,32 @@
     "file": "frames/working-1.png",
     "points": {}
    },
-   "working-2": {
-    "file": "frames/working-2.png",
+   "attention-0": {
+    "file": "frames/attention-0.png",
+    "points": {}
+   },
+   "attention-0-half": {
+    "file": "frames/attention-0-half.png",
+    "points": {}
+   },
+   "attention-0-closed": {
+    "file": "frames/attention-0-closed.png",
+    "points": {}
+   },
+   "done-0": {
+    "file": "frames/done-0.png",
+    "points": {}
+   },
+   "done-1": {
+    "file": "frames/done-1.png",
+    "points": {}
+   },
+   "done-2": {
+    "file": "frames/done-2.png",
+    "points": {}
+   },
+   "done-3": {
+    "file": "frames/done-3.png",
     "points": {}
    },
    "speaking-0": {
@@ -53,6 +125,70 @@
    },
    "speaking-1": {
     "file": "frames/speaking-1.png",
+    "points": {}
+   },
+   "speaking-0-half": {
+    "file": "frames/speaking-0-half.png",
+    "points": {}
+   },
+   "speaking-0-closed": {
+    "file": "frames/speaking-0-closed.png",
+    "points": {}
+   },
+   "speaking-1-half": {
+    "file": "frames/speaking-1-half.png",
+    "points": {}
+   },
+   "speaking-1-closed": {
+    "file": "frames/speaking-1-closed.png",
+    "points": {}
+   },
+   "asleep-0": {
+    "file": "frames/asleep-0.png",
+    "points": {}
+   },
+   "asleep-1": {
+    "file": "frames/asleep-1.png",
+    "points": {}
+   },
+   "asleep-2": {
+    "file": "frames/asleep-2.png",
+    "points": {}
+   },
+   "offline-0": {
+    "file": "frames/offline-0.png",
+    "points": {}
+   },
+   "offline-0-half": {
+    "file": "frames/offline-0-half.png",
+    "points": {}
+   },
+   "offline-0-closed": {
+    "file": "frames/offline-0-closed.png",
+    "points": {}
+   },
+   "error-0": {
+    "file": "frames/error-0.png",
+    "points": {}
+   },
+   "error-0-half": {
+    "file": "frames/error-0-half.png",
+    "points": {}
+   },
+   "error-0-closed": {
+    "file": "frames/error-0-closed.png",
+    "points": {}
+   },
+   "ask_yes-0": {
+    "file": "frames/ask_yes-0.png",
+    "points": {}
+   },
+   "ask_yes-0-half": {
+    "file": "frames/ask_yes-0-half.png",
+    "points": {}
+   },
+   "ask_yes-0-closed": {
+    "file": "frames/ask_yes-0-closed.png",
     "points": {}
    }
   },
@@ -68,6 +204,30 @@
      {
       "frame": "idle-1",
       "ms": 250
+     },
+     {
+      "frame": "idle-2",
+      "ms": 250
+     }
+    ],
+    "blink": [
+     [
+      "idle-0-half",
+      "idle-0-closed"
+     ],
+     [
+      "idle-1-half",
+      "idle-1-closed"
+     ],
+     [
+      "idle-2-half",
+      "idle-2-closed"
+     ]
+    ],
+    "sip": [
+     {
+      "frame": "idle-glance-0",
+      "ms": 1200
      }
     ],
     "breath": "day"
@@ -85,6 +245,16 @@
       "ms": 300
      }
     ],
+    "blink": [
+     [
+      "listening-0-half",
+      "listening-0-closed"
+     ],
+     [
+      "listening-1-half",
+      "listening-1-closed"
+     ]
+    ],
     "breath": "day"
    },
    {
@@ -98,12 +268,49 @@
      {
       "frame": "working-1",
       "ms": 300
-     },
-     {
-      "frame": "working-2",
-      "ms": 300
      }
     ],
+    "breath": "day"
+   },
+   {
+    "pose": "attention",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "attention-0",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "attention-0-half",
+      "attention-0-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "done",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "done-0",
+      "ms": 120
+     },
+     {
+      "frame": "done-1",
+      "ms": 120
+     },
+     {
+      "frame": "done-2",
+      "ms": 120
+     },
+     {
+      "frame": "done-3",
+      "ms": 120
+     }
+    ],
+    "loop_from": 3,
     "breath": "day"
    },
    {
@@ -118,6 +325,86 @@
       "frame": "speaking-1",
       "ms": 200
      }
+    ],
+    "blink": [
+     [
+      "speaking-0-half",
+      "speaking-0-closed"
+     ],
+     [
+      "speaking-1-half",
+      "speaking-1-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "asleep",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "asleep-0",
+      "ms": 400
+     },
+     {
+      "frame": "asleep-1",
+      "ms": 400
+     },
+     {
+      "frame": "asleep-2",
+      "ms": 400
+     }
+    ],
+    "breath": "night"
+   },
+   {
+    "pose": "offline",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "offline-0",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "offline-0-half",
+      "offline-0-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "error",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "error-0",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "error-0-half",
+      "error-0-closed"
+     ]
+    ],
+    "breath": "day"
+   },
+   {
+    "pose": "ask_yes",
+    "outfit": "default",
+    "frames": [
+     {
+      "frame": "ask_yes-0",
+      "ms": 1000
+     }
+    ],
+    "blink": [
+     [
+      "ask_yes-0-half",
+      "ask_yes-0-closed"
+     ]
     ],
     "breath": "day"
    }

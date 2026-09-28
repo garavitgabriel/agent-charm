@@ -282,8 +282,8 @@ const char *const BOOK = "{\"title\":\"Piranesi\",\"author\":\"Susanna Clarke\",
 
 }  // namespace
 
-// The design shot set: the 14 surfaces of BRIEF § 11.3, money mid-hold, and the reading surfaces of
-// § 11.8, each written to DIR and (with its reference) side by side to DIR/../compare. Fixture copy
+// The design shot set: the 14 surfaces of BRIEF § 11.3, money mid-hold, the reading surfaces of
+// § 11.8 and Coach's C0-C3 of § 11.9, each written to DIR and (with its reference) side by side to DIR/../compare. Fixture copy
 // mirrors the reference renders so the side-by-sides compare like with like.
 int sim_run_shots(const char *dir_c) {
     const std::string dir = dir_c;
@@ -451,6 +451,41 @@ int sim_run_shots(const char *dir_c) {
                      "\"created_at\":\"2026-09-27T21:12:00-05:00\",\"data\":{\"saved\":false,\"book\":") + BOOK + "}}");
     feed_str("{\"type\":\"state\",\"value\":\"idle\"}");
     shot(dir, "r6-not-saved.png", CharmSurface::Saved);
+    dismiss("ntc-f");
+
+    // ---- Coach Beard (§ 11.9): the server switches the character with mode.agent.
+    feed_str("{\"type\":\"mode\",\"value\":\"default\",\"agent\":\"coach\"}");
+    feed_str("{\"type\":\"state\",\"value\":\"idle\",\"agent\":\"coach\"}");
+    shot(dir, "c0-home.png", CharmSurface::Home, "coach/c0-home.png");
+
+    // His hand is at his headset: the voice stream lands there (no reference render).
+    charm_ui_talk_pressed();
+    for (int i = 0; i < 4000 / 80; i++) {
+        charm_ui_mic_level(0.25f + 0.6f * (float)((i * 37) % 11) / 10.0f * ((i % 5) != 3));
+        sim_advance(80);
+    }
+    shot(dir, "c-listening.png", CharmSurface::Listening, nullptr, 0);
+    charm_ui_talk_released();
+    sim_advance(1200);  // the capsules in flight land at his headset
+
+    // A walk-away job: "Coach is on it", then (minutes later) his call, with no speech.
+    feed_str("{\"type\":\"state\",\"value\":\"working\",\"agent\":\"coach\",\"label\":\"Coach is on it\"}");
+    card("{\"id\":\"coach-job-001\",\"kind\":\"job\",\"title\":\"Coach is on it\",\"body\":\"Checking injury reports "
+         "and your matchup.\",\"source\":\"coach\",\"created_at\":\"2026-09-28T12:00:00-05:00\",\"data\":{\"status\":\"running\"}}");
+    shot(dir, "c1-on-it.png", CharmSurface::CoachOnIt, "coach/c1-on-it.png");
+    card("{\"id\":\"coach-call-001\",\"kind\":\"decision\",\"title\":\"QB this week\",\"body\":\"Keep Purdy over Maye.\","
+         "\"source\":\"coach\",\"created_at\":\"2026-09-28T12:00:00-05:00\",\"data\":{\"default\":\"Start Purdy\","
+         "\"deadline\":\"Sun 12:00\",\"flip_if\":\"Flip only if Purdy is out before Sun 12:00\"},"
+         "\"actions\":[{\"id\":\"hear\",\"label\":\"Hear it\",\"style\":\"primary\"},"
+         "{\"id\":\"why\",\"label\":\"Why?\",\"style\":\"secondary\"},{\"id\":\"later\",\"label\":\"Later\",\"style\":\"secondary\"}]}");
+    dismiss("coach-job-001");
+    feed_str("{\"type\":\"state\",\"value\":\"attention\",\"agent\":\"coach\"}");
+    shot(dir, "c2-call.png", CharmSurface::CoachCall, "coach/c2-call.png");
+    dismiss("coach-call-001");
+    feed_str("{\"type\":\"state\",\"value\":\"idle\",\"agent\":\"coach\"}");
+
+    sim_advance(61000);  // a quiet minute: Coach sleeps too
+    shot(dir, "c3-night.png", CharmSurface::Night, "coach/c3-night.png");
 
     fprintf(stderr, "[shots] wrote to %s (+ %s), %d failure(s)\n", dir.c_str(), compare_dir.c_str(), failures);
     return failures == 0 ? 0 : 1;

@@ -3,16 +3,16 @@
 // Sources (relative to tools/):
 //   manifest.json (sha256 920e25ae18b4381b)
 //   76 frame PNGs (sha256 269614e28b7f516a)
-//   coach/manifest.json (sha256 0128dc082ae6d586)
-//   9 coach frame PNGs (sha256 d33ebdc88abbbebe)
+//   coach/manifest.json (sha256 559ec9de9ec4fbd2)
+//   43 coach frame PNGs (sha256 aeff9178086b9d58)
 
 #pragma once
 #include <stdint.h>
 #include <lvgl.h>
 
 // Smooth Dex: 20 pose/outfit animations drawn, 70 borrowed from the default outfit; 75 unique frames (78 uses).
-// Coach: 4 pose/outfit animations drawn, 20 borrowed from coach's default outfit, 9 frames.
-// Opaque RGB565 (little-endian) on #000, one LZ4 block each: 86,016 bytes a frame decoded, 760,976 bytes compressed in all.
+// Coach: 10 pose/outfit animations drawn, 50 borrowed from coach's default outfit, 42 frames.
+// Opaque RGB565 (little-endian) on #000, one LZ4 block each: 86,016 bytes a frame decoded, 1,165,822 bytes compressed in all.
 #define CHARM_SPRITE_SMOOTH 1
 #define CHARM_SPRITE_INDEXED_BPP 0
 #define CHARM_SPRITE_CELL_W 192
@@ -29,7 +29,7 @@
 #define CHARM_SPRITE_POSES 15
 #define CHARM_SPRITE_OUTFITS 6
 #define CHARM_SPRITE_POINTS 2  // hand, bag
-#define CHARM_SPRITE_IMAGES 84
+#define CHARM_SPRITE_IMAGES 117
 #define CHARM_SPRITE_NO_IMG 0xFFFF
 #define CHARM_SPRITE_NO_POSE 0xFF
 
