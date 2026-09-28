@@ -40,7 +40,11 @@ ERROR_CODES = (
     "agent_error",
     "busy",
     "stale",
+    "save_failed",
 )
+MODES = ("default", "gameday", "reading", "food", "code", "cat")
+SETTING_NAMES = ("speech", "mode")
+SPEECH_VALUES = ("on", "off")
 EDITION_SECTIONS = ("masthead", "one_thing", "sports", "almanac", "waiting", "wire")
 AUDIO_END_REASONS = ("released", "limit", "cancel")
 REQUEST_WHATS = ("edition", "pending", "status")

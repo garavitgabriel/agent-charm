@@ -61,6 +61,8 @@ class Config:
     voice_es: str
     whisper_model: str
     hermes_channel: bool = True
+    books_path: Path | None = None  # None: reading state in memory only (tests)
+    notes_backend: str = "osapi"
 
     @classmethod
     def from_env(cls, env_file: Path | None = SERVER_DIR / ".env") -> Config:
@@ -82,4 +84,6 @@ class Config:
             whisper_model=env.get("CHARM_WHISPER_MODEL", "base"),
             hermes_channel=env.get("HERMES_CHANNEL", "1").strip().lower()
             not in ("0", "false", "no"),
+            books_path=_path("CHARM_BOOKS", SERVER_DIR / ".local" / "books.json"),
+            notes_backend=env.get("CHARM_NOTES", "osapi").strip().lower() or "osapi",
         )

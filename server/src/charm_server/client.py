@@ -5,6 +5,7 @@
     charm-client --mic                          # Enter to start, Enter to stop
     charm-client --edition                      # pull the pocket edition
     charm-client --pending --action order-001:confirm --held-ms 2000
+    charm-client --setting speech=on --say "I'm reading Dune, chapter 2"
 
 It prints states, the transcript and cards, sends `displayed` receipts like the device does, and
 plays Dex's speech through the Mac speakers.
@@ -246,6 +247,12 @@ class Device:
             print(f"{at} ERROR {m.get('code')}: {m.get('text')}")
         elif kind == "welcome":
             print(f"{at} welcome from {m.get('server')} ({m.get('tz')}, {m.get('time')})")
+        elif kind == "mode":
+            book = m.get("book") or {}
+            about = " · ".join(str(book[k]) for k in ("title", "author", "chapter") if k in book)
+            print(f"{at} mode {m.get('value')}" + (f" ({about})" if about else ""))
+        elif kind == "setting":
+            print(f"{at} setting {m.get('name')}={m.get('value')}")
         elif kind == "pong":
             pass
         else:
@@ -259,7 +266,14 @@ def format_card(card: dict[str, Any]) -> str:
     if card.get("body"):
         for line in textwrap.wrap(card["body"], 72):
             lines.append(f"  │ {line}")
+    if card.get("detail"):
+        lines.append("  │")
+        for paragraph in str(card["detail"]).split("\n\n"):
+            for line in textwrap.wrap(paragraph, 72):
+                lines.append(f"  │   {line}")
     data = card.get("data") or {}
+    if "saved" in data:
+        lines.append(f"  │ saved: {'yes (store confirmed)' if data['saved'] else 'NO'}")
     for row in data.get("rows", []):
         stamp = f"  [{row['stamp']}]" if row.get("stamp") else ""
         lines.append(f"  │ · {row['text']}{stamp}")
@@ -385,6 +399,10 @@ async def run(args: argparse.Namespace, config: Config) -> int:
             except (ConnectionClosed, TimeoutError):
                 print("Not paired: check CHARM_TOKEN.")
                 return 2
+            for setting in getattr(args, "setting", None) or []:
+                name, _, value = setting.partition("=")
+                await device.send({"type": "setting", "name": name, "value": value})
+                await device.barrier()
             if args.edition:
                 await device.send({"type": "request", "what": "edition"})
                 await device.barrier()
@@ -424,14 +442,25 @@ def main() -> None:
     parser.add_argument("--pending", action="store_true", help="request pending cards")
     parser.add_argument("--action", metavar="CARD:ACTION", help="press a card button")
     parser.add_argument("--held-ms", type=int, help="hold duration to report with --action")
+    parser.add_argument(
+        "--setting",
+        action="append",
+        metavar="NAME=VALUE",
+        help="send a setting first, e.g. speech=off or mode=reading (repeatable)",
+    )
     parser.add_argument("--no-play", action="store_true", help="don't play Dex's speech")
     parser.add_argument("--url", help="default ws://CHARM_HOST:CHARM_PORT/charm")
     parser.add_argument("--token", help="default CHARM_TOKEN")
     parser.add_argument("--device-id", default=f"charm-client-{os.getpid()}")
     parser.add_argument("--timeout", type=float, default=180.0, help="seconds to wait for Dex")
     args = parser.parse_args()
-    if not (args.say or args.wav or args.mic or args.edition or args.pending or args.action):
-        parser.error("nothing to do: pass --say, --wav, --mic, --edition, --pending or --action")
+    if (
+        not (args.say or args.wav or args.mic or args.edition or args.pending or args.action)
+        and not args.setting
+    ):
+        parser.error(
+            "nothing to do: pass --say, --wav, --mic, --edition, --pending, --action or --setting"
+        )
     sys.exit(asyncio.run(run(args, Config.from_env())))
 
 

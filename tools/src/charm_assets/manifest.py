@@ -84,9 +84,68 @@ class FontSpec:
 
 
 @dataclass(frozen=True)
+class SmoothFrame:
+    name: str
+    file: Path
+    points: dict[str, tuple[int, int, int, int]]  # point name -> x, y, w, h in cell px
+
+
+@dataclass(frozen=True)
+class Clip:
+    frames: tuple[tuple[str, int], ...]  # (frame name, ms)
+
+
+@dataclass(frozen=True)
+class SmoothAnimation:
+    pose: str
+    outfit: str
+    frames: tuple[tuple[str, int], ...]
+    loop_from: int
+    blink: tuple[tuple[str, str], ...] | None  # (half, closed) per frame
+    sip: Clip | None
+    exit_to: str | None
+    exit: Clip | None
+    breath: str  # "none" | "day" | "night"
+
+
+@dataclass(frozen=True)
+class Motion:
+    tick_ms: int
+    breath: dict[str, tuple[int, ...]]  # 6 steps: rest, -1, -2, hold, -1, 0
+    blink_half_ms: int
+    blink_closed_ms: int
+    blink_every_ms: tuple[int, int]
+    blink_double_every: int
+    blink_double_gap_ms: int
+    sip_every_ms: tuple[int, int]
+
+
+@dataclass(frozen=True)
+class SmoothSpec:
+    """`"format": "rgb565"`: opaque full-color frames, one PNG each, compressed, never scaled."""
+
+    cell_w: int
+    cell_h: int
+    anchor: tuple[int, int]  # the cell pixel on Dex's hip
+    screen_anchor: tuple[int, int]  # where the hip lands on screen
+    mini_x: int
+    mini_y: int
+    compression: str
+    outfit_fallback: bool
+    motion: Motion
+    frames: dict[str, SmoothFrame]
+    animations: tuple[SmoothAnimation, ...]
+
+
+POINTS = ("hand", "bag")  # dex_point_t order in ui/dex_sprite.h
+BREATHS = ("none", "day", "night")
+COMPRESSIONS = ("lz4",)  # RLE was measured and lost: see smooth.py
+
+
+@dataclass(frozen=True)
 class Manifest:
     path: Path
-    sprites: SpriteSpec | None
+    sprites: SpriteSpec | SmoothSpec | None
     fonts: FontSpec | None
 
 
@@ -201,6 +260,186 @@ def _sprites(raw: dict[str, Any], base: Path) -> SpriteSpec:
     )
 
 
+def _range(obj: dict[str, Any], key: str, where: str, lo: int, hi: int) -> tuple[int, int]:
+    a, b = _pair(obj, key, where, lo, hi)
+    if a > b:
+        raise ManifestError(f"{where}.{key} must be [min, max]")
+    return a, b
+
+
+def _motion(raw: Any) -> Motion:
+    w = "sprites.motion"
+    if not isinstance(raw, dict):
+        raise ManifestError(f"{w} must be an object (tick, breath, blink and sip timing)")
+    breath_raw = raw.get("breath")
+    if not isinstance(breath_raw, dict) or set(breath_raw) != {"day", "night"}:
+        raise ManifestError(f'{w}.breath must give "day" and "night" step lists')
+    breath: dict[str, tuple[int, ...]] = {}
+    for k, v in breath_raw.items():
+        if (
+            not isinstance(v, list)
+            or len(v) != 6
+            or not all(
+                isinstance(x, int) and not isinstance(x, bool) and 1 <= x <= 60000 for x in v
+            )
+        ):
+            raise ManifestError(
+                f"{w}.breath.{k} must be 6 step durations in ms (rest, -1 px, "
+                "-2 px, hold, -1 px, 0 px)"
+            )
+        breath[k] = tuple(v)
+    blink = raw.get("blink")
+    if not isinstance(blink, dict):
+        raise ManifestError(f"{w}.blink must be an object")
+    bw = f"{w}.blink"
+    return Motion(
+        tick_ms=_int(raw, "tick_ms", w, 1, 1000),
+        breath=breath,
+        blink_half_ms=_int(blink, "half_ms", bw, 1, 1000),
+        blink_closed_ms=_int(blink, "closed_ms", bw, 1, 1000),
+        blink_every_ms=_range(blink, "every_ms", bw, 100, 600000),
+        blink_double_every=_int(blink, "double_every", bw, 0, 255),
+        blink_double_gap_ms=_int(blink, "double_gap_ms", bw, 1, 5000),
+        sip_every_ms=_range(raw, "sip_every_ms", w, 1000, 3600000),
+    )
+
+
+def _frame_refs(
+    raw: Any, where: str, frames: dict[str, SmoothFrame]
+) -> tuple[tuple[str, int], ...]:
+    if not isinstance(raw, list) or not 1 <= len(raw) <= 255:
+        raise ManifestError(f"{where} must list 1..255 frames")
+    out = []
+    for j, f in enumerate(raw):
+        fw = f"{where}[{j}]"
+        if not isinstance(f, dict) or f.get("frame") not in frames:
+            raise ManifestError(
+                f"{fw}.frame must name a frame in sprites.frames, got "
+                f"{f.get('frame') if isinstance(f, dict) else f!r}"
+            )
+        out.append((str(f["frame"]), _int(f, "ms", fw, 16, 60000)))
+    return tuple(out)
+
+
+def _smooth(raw: dict[str, Any], base: Path) -> SmoothSpec:
+    w = "sprites"
+    cell_w, cell_h = _pair(raw, "cell", w, 1, 1024)
+    ax, ay = _pair(raw, "anchor", w, 0, 1023)
+    if ax >= cell_w or ay >= cell_h:
+        raise ManifestError(f"sprites.anchor {ax},{ay} is outside the cell")
+    sx, sy = _pair(raw, "screen_anchor", w, 0, 1023)
+    mini_x, mini_y = _pair(raw, "mini_origin", w, 0, 1023)
+    if mini_x + MINI_BOX[0] > cell_w or mini_y + MINI_BOX[1] > cell_h:
+        raise ManifestError(
+            f"sprites.mini_origin {mini_x},{mini_y}: the {MINI_BOX[0]}x"
+            f"{MINI_BOX[1]} mini crop leaves the cell"
+        )
+    compression = raw.get("compression", "lz4")
+    if compression not in COMPRESSIONS:
+        raise ManifestError(f"sprites.compression must be one of {', '.join(COMPRESSIONS)}")
+    if "scale" in raw:
+        raise ManifestError('sprites.scale: "rgb565" frames are never scaled; remove it')
+
+    frames_raw = raw.get("frames")
+    if not isinstance(frames_raw, dict) or not frames_raw:
+        raise ManifestError('sprites.frames must map a frame name to {"file": "x.png"}')
+    frames: dict[str, SmoothFrame] = {}
+    for name, f in sorted(frames_raw.items()):
+        fw = f"sprites.frames.{name}"
+        if not isinstance(f, dict) or not isinstance(f.get("file"), str):
+            raise ManifestError(f'{fw} must be {{"file": "x.png", "points": {{...}}}}')
+        pts_raw = f.get("points", {})
+        if not isinstance(pts_raw, dict):
+            raise ManifestError(f"{fw}.points must be an object")
+        points: dict[str, tuple[int, int, int, int]] = {}
+        for pname, box in pts_raw.items():
+            if pname not in POINTS:
+                raise ManifestError(f"{fw}.points.{pname}: not one of {', '.join(POINTS)}")
+            if (
+                not isinstance(box, list)
+                or len(box) != 4
+                or not all(isinstance(v, int) and not isinstance(v, bool) for v in box)
+                or box[2] <= 0
+                or box[3] <= 0
+                or box[0] < 0
+                or box[1] < 0
+                or box[0] + box[2] > cell_w
+                or box[1] + box[3] > cell_h
+            ):
+                raise ManifestError(
+                    f"{fw}.points.{pname} must be [x, y, w, h] inside the cell, got {box!r}"
+                )
+            points[pname] = (box[0], box[1], box[2], box[3])
+        frames[str(name)] = SmoothFrame(str(name), (base / f["file"]).resolve(), points)
+
+    anims: list[SmoothAnimation] = []
+    seen: set[tuple[str, str]] = set()
+    anims_raw = raw.get("animations", [])
+    if not isinstance(anims_raw, list):
+        raise ManifestError("sprites.animations must be a list")
+    for i, a in enumerate(anims_raw):
+        aw = f"sprites.animations[{i}]"
+        if not isinstance(a, dict):
+            raise ManifestError(f"{aw} must be an object")
+        pose, outfit = a.get("pose"), a.get("outfit", "default")
+        if pose not in POSES:
+            raise ManifestError(f"{aw}.pose {pose!r} is not one of {', '.join(POSES)}")
+        if outfit not in OUTFITS:
+            raise ManifestError(f"{aw}.outfit {outfit!r} is not one of {', '.join(OUTFITS)}")
+        if (pose, outfit) in seen:
+            raise ManifestError(f"{aw}: {pose}/{outfit} is listed twice")
+        seen.add((pose, outfit))
+        seq = _frame_refs(a.get("frames"), f"{aw}.frames", frames)
+        loop_from = a.get("loop_from", 0)
+        if not isinstance(loop_from, int) or not 0 <= loop_from < len(seq):
+            raise ManifestError(f"{aw}.loop_from must index one of its {len(seq)} frames")
+        blink = None
+        if "blink" in a:
+            b = a["blink"]
+            if (
+                not isinstance(b, list)
+                or len(b) != len(seq)
+                or not all(
+                    isinstance(x, list) and len(x) == 2 and all(n in frames for n in x) for x in b
+                )
+            ):
+                raise ManifestError(
+                    f"{aw}.blink must give [half, closed] frame names for each "
+                    f"of its {len(seq)} frames"
+                )
+            blink = tuple((str(x[0]), str(x[1])) for x in b)
+        sip = Clip(_frame_refs(a["sip"], f"{aw}.sip", frames)) if "sip" in a else None
+        exit_to, exit_clip = None, None
+        if "exit" in a:
+            e = a["exit"]
+            if not isinstance(e, dict) or e.get("to") not in POSES or e.get("to") == pose:
+                raise ManifestError(f'{aw}.exit must be {{"to": <another pose>, "frames": [...]}}')
+            exit_to = str(e["to"])
+            exit_clip = Clip(_frame_refs(e.get("frames"), f"{aw}.exit.frames", frames))
+        breath = a.get("breath", "day")
+        if breath not in BREATHS:
+            raise ManifestError(f"{aw}.breath must be one of {', '.join(BREATHS)}")
+        anims.append(
+            SmoothAnimation(
+                str(pose), str(outfit), seq, loop_from, blink, sip, exit_to, exit_clip, str(breath)
+            )
+        )
+
+    return SmoothSpec(
+        cell_w=cell_w,
+        cell_h=cell_h,
+        anchor=(ax, ay),
+        screen_anchor=(sx, sy),
+        mini_x=mini_x,
+        mini_y=mini_y,
+        compression=str(compression),
+        outfit_fallback=bool(raw.get("outfit_fallback", True)),
+        motion=_motion(raw.get("motion")),
+        frames=frames,
+        animations=tuple(anims),
+    )
+
+
 def _str_list(obj: dict[str, Any], key: str, where: str) -> tuple[str, ...]:
     v = obj.get(key, [])
     if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
@@ -273,10 +512,18 @@ def load(path: Path) -> Manifest:
     fonts = raw.get("fonts")
     if sprites is not None and not isinstance(sprites, dict):
         raise ManifestError("sprites must be an object")
+    if sprites is not None and sprites.get("format", "indexed") not in ("indexed", "rgb565"):
+        raise ManifestError('sprites.format must be "indexed" (pixel art) or "rgb565" (smooth)')
     if fonts is not None and not isinstance(fonts, dict):
         raise ManifestError("fonts must be an object")
     return Manifest(
         path=path.resolve(),
-        sprites=_sprites(sprites, base) if sprites is not None else None,
+        sprites=(
+            None
+            if sprites is None
+            else _smooth(sprites, base)
+            if sprites.get("format") == "rgb565"
+            else _sprites(sprites, base)
+        ),
         fonts=_fonts(fonts, base) if fonts is not None else None,
     )

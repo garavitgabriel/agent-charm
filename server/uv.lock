@@ -213,10 +213,26 @@ wheels = [
 ]
 
 [[package]]
+name = "charm-notes"
+version = "0.0.1"
+source = { editable = "../notes" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = "==2.3.1" },
+    { name = "pytest", specifier = "==9.1.1" },
+    { name = "pytest-asyncio", specifier = "==1.4.0" },
+    { name = "ruff", specifier = "==0.16.9" },
+]
+
+[[package]]
 name = "charm-server"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "charm-notes" },
     { name = "edge-tts" },
     { name = "faster-whisper" },
     { name = "jsonschema" },
@@ -236,6 +252,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "charm-notes", editable = "../notes" },
     { name = "edge-tts", specifier = "==7.2.8" },
     { name = "faster-whisper", specifier = "==1.2.1" },
     { name = "jsonschema", specifier = "==4.26.0" },
