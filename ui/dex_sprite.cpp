@@ -48,6 +48,7 @@ lv_obj_t *beat;  // a small square that steps each frame: proof the animation cl
 lv_obj_t *img;   // the sprite
 dex_pose_t pose = DEX_POSE_IDLE;
 dex_outfit_t outfit = DEX_OUTFIT_DEFAULT;
+dex_character_t character = DEX_CHARACTER_DEX;
 dex_size_t size = DEX_SIZE_FULL;
 bool hidden = false;
 int frame = -1;  // placeholder beat step
@@ -248,8 +249,9 @@ void start_clip(Clip kind, const charm_sprite_clip_t *src, uint32_t now) {
 
 void restyle() {
     if (!box) return;
-    const charm_sprite_anim_t *a = &charm_sprite_anims[pose][outfit];
-    const charm_sprite_anim_t *want = a->count > 0 && a->frames && pixels ? a : nullptr;
+    const charm_sprite_anim_t *a =
+        character == DEX_CHARACTER_DEX ? &charm_sprite_anims[pose][outfit] : nullptr;
+    const charm_sprite_anim_t *want = a && a->count > 0 && a->frames && pixels ? a : nullptr;
     show_placeholder(!want);
     relabel();
     if (!want) {
@@ -453,8 +455,9 @@ void show_frame() {
 // The sprite when the current pose/outfit has frames, the gray placeholder when it doesn't.
 void restyle() {
     if (!box) return;
-    const charm_sprite_anim_t *a = &charm_sprite_anims[pose][outfit];
-    const charm_sprite_anim_t *want = a->count > 0 && a->frames ? a : nullptr;
+    const charm_sprite_anim_t *a =
+        character == DEX_CHARACTER_DEX ? &charm_sprite_anims[pose][outfit] : nullptr;
+    const charm_sprite_anim_t *want = a && a->count > 0 && a->frames ? a : nullptr;
     show_placeholder(!want);
     if (want != anim) {
         anim = want;
@@ -558,6 +561,25 @@ void dex_set_pose(dex_pose_t p) {
     if (p >= DEX_POSE_COUNT || p == pose) return;
     pose = p;
     restyle();
+}
+
+void dex_set_character(dex_character_t c) {
+    if (c >= DEX_CHARACTER_COUNT || c == character) return;
+    character = c;
+    restyle();
+}
+
+dex_character_t dex_get_character(void) { return character; }
+
+const char *dex_character_name(dex_character_t c) {
+    return c == DEX_CHARACTER_DEX ? "dex" : c == DEX_CHARACTER_COACH ? "coach" : "?";
+}
+
+bool dex_character_from_agent(const char *agent, dex_character_t *out) {
+    if (!agent) return false;
+    if (strcmp(agent, "dex") == 0) { *out = DEX_CHARACTER_DEX; return true; }
+    if (strcmp(agent, "coach") == 0) { *out = DEX_CHARACTER_COACH; return true; }
+    return false;
 }
 
 void dex_set_outfit(dex_outfit_t o) {

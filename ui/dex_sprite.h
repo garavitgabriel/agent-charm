@@ -37,6 +37,14 @@ enum dex_outfit_t {
     DEX_OUTFIT_COUNT
 };
 
+// Which character wears the body (2026-09-28, Coach Beard on the charm; docs/COACH.md). Same poses,
+// same anchor, same footprint (BRIEF § 11.7 character-swap contract). Follows protocol `mode.agent`.
+enum dex_character_t {
+    DEX_CHARACTER_DEX,
+    DEX_CHARACTER_COACH,
+    DEX_CHARACTER_COUNT
+};
+
 // Full body (Home and friends) or the mini head-and-shoulders in a corner while a card is open.
 // DESIGN § 11.6: Dex is ALWAYS full body at the one anchor. MINI is kept for API stability only;
 // the final UI must not use it.
@@ -54,6 +62,8 @@ enum dex_point_t {
 void dex_create(lv_obj_t *parent);
 
 void dex_set_pose(dex_pose_t pose);
+// A character without frames for the current pose shows the gray placeholder (never Dex's frames).
+void dex_set_character(dex_character_t character);
 void dex_set_outfit(dex_outfit_t outfit);
 void dex_set_size(dex_size_t size);
 void dex_set_hidden(bool hidden);
@@ -67,6 +77,10 @@ void dex_tick(uint32_t now_ms);
 bool dex_get_point_area(dex_point_t which, lv_area_t *out);
 
 dex_pose_t dex_get_pose(void);
+dex_character_t dex_get_character(void);
+const char *dex_character_name(dex_character_t character);
+// Protocol agent string ("dex" | "coach") -> character. Returns false for an unknown agent.
+bool dex_character_from_agent(const char *agent, dex_character_t *out);
 dex_outfit_t dex_get_outfit(void);
 dex_size_t dex_get_size(void);
 

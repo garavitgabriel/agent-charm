@@ -183,6 +183,46 @@ server: state{working, label:"Saving"} → (note store confirms) → card{kind:"
 
 New error code: `save_failed`, meaning the note store didn't confirm the save.
 
+## Agents: Dex and Coach Beard — 2026-09-28 (additive, still proto/0)
+
+The charm talks to two Hermes agents: **Dex** (the default) and **Coach Beard** (the `coach`
+profile: fantasy football and the NFL). Plan: `docs/COACH.md`.
+
+**Routing (server, rule-based, EN + ES, no model call):**
+- a wake word at the start: "Coach, …" / "Coach Beard, …" / "Entrenador, …";
+- or a clearly fantasy/NFL question: lineup, start/sit, waivers, trade, "my team", player injury
+  status for the week;
+- everything else goes to Dex.
+
+A routed question uses that agent's own persona appendix, history and TTS voice. `state.agent`
+always names who is working or speaking.
+
+**Which character is on screen:** `mode{value, book?, agent?}` gains `agent: "dex" | "coach"`. The
+device shows the named character; `dex` is assumed when it's absent.
+
+**Walk-away jobs (Coach).** Coach does real research (about 3 minutes measured), so a Coach question
+never holds the screen:
+
+```
+server: state{working, agent:"coach", label:"Coach is on it"}
+        → card{kind:"job", source:"coach", data:{status:"running"}}        (you can put it down)
+        … minutes later …
+        → card{kind:"decision" | "answer", source:"coach", …}  → dismiss{the job card}
+        → state{attention, agent:"coach"}                                   (no sound, no ping)
+device: action{card_id, action:"hear"}  → server speaks the card's body (speech_start … speech_end)
+```
+
+- **Coach's call** is a `decision` card from `source:"coach"`:
+  - `data.default` is the verdict ("Start Purdy");
+  - `data.deadline` is in Chicago� time;
+  - `data.flip_if` is new and optional (≤ 80 chars): "Flip only if Purdy is out before Sun 12:00";
+  - actions are `hear` / `why` / `later`. `why` asks Coach for the reasoning as another walk-away job.
+- Coach never gets money cards, and there's no reading mode for Coach.
+- **Fast path:** "What's Coach's latest call?" answers in seconds from his latest delivered call (his
+  decision ledger / `coach-today` output), not with a fresh run. The card says when the call was made.
+- **Honesty:** a job that fails or times out (Coach's limit is 300 s) replaces the job card with
+  a `notice` saying so. Nothing is invented.
+
 ## Versioning
 
 This is v0. The protocol version travels in `hello.fw` and `welcome.server` (e.g. `"charm-server/0.1 proto/0"`).

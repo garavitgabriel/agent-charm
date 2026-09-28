@@ -133,6 +133,11 @@
               "deadline": {
                 "type": "string",
                 "maxLength": 40
+              },
+              "flip_if": {
+                "type": "string",
+                "maxLength": 80,
+                "description": "Coach's call: what would change the verdict"
               }
             }
           }
