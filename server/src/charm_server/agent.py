@@ -1,9 +1,9 @@
-"""Dex, reached the way Margin reaches Hermes.
+"""The agent protocols, the charm persona, and `HermesAgent` (the Hermes backend, per question).
 
 Provenance: the SSH -> `docker exec` -> container-local `/v1/chat/completions` pattern and the
-in-container script below are adapted from Margin's `bridge.py` (`margin/bridge.py`,
-commit 1b491367fd4a53018814e3f609fbe194e8ff5825; the owner's own local repo, no separate
-license). The API key is read inside the container and never leaves the VPS.
+in-container script below are adapted from Margin, the author's earlier reading-companion
+prototype (same author, contributed under this repo's license). The API key is read inside the
+container and never leaves the host.
 
 Read and converse only: this module sends chat messages and reads the reply. It never changes
 Hermes config, crons, skills or the charter, and the persona forbids tools and actions.
@@ -17,6 +17,7 @@ import contextlib
 import json
 import logging
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 log = logging.getLogger(__name__)
@@ -25,31 +26,70 @@ Message = dict[str, str]
 
 LANGUAGE_NAMES = {"en": "English", "es": "Spanish"}
 
-# The charm's authority, decided by the owner 2026-09-28: "read, don't act". Dex keeps his Telegram
-# lookups but takes no actions from a microphone that can mishear. Behavioral, like his Telegram
-# charter gates: the Hermes api_server toolset is his full set (web, file, terminal, cron...), and
-# narrowing it per channel is a Hermes config change this project may not make.
-READ_ONLY_RULE = (
-    "You may use your tools to LOOK THINGS UP, as you would on Telegram: web search and reading "
-    "pages, reading the vault and your files, your memory and past sessions, today's feeds and "
-    "read-only skills. You must NOT take any action from this channel: no orders or checkouts "
-    "(DeliveryCo included), no messages or emails to anyone, no writing, patching or deleting files, "
-    "no commands or code that change anything, no cron jobs, no delegated tasks, no saving or "
-    "editing memories, no image generation. The microphone can mishear, so when a request needs "
-    "an action, say in one sentence what you would do and that it needs Telegram for now. Keep "
-    "lookups quick, a couple of tool calls at most; if it needs deep research, say so in one "
-    "sentence and suggest asking on Telegram."
-)
 
-PERSONA = (
-    "You are Dex, the owner's agent, speaking through the Dex Charm: a small pocket device with a "
-    "tiny screen and a speaker. " + READ_ONLY_RULE + " Answer in plain text with no markdown, "
-    "lists or emoji. Lead with the answer. Keep it to 2 or 3 short sentences, at most 60 words; "
-    "the first two sentences are spoken aloud, so they must stand alone. Always reply in the same "
-    "language as the question. Do not praise the question and do not invent facts."
-)
+@dataclass(frozen=True)
+class Persona:
+    """Who the agents work for, and where actions go instead. Both optional.
 
-# Runs inside the Hermes container (adapted from margin/bridge.py REMOTE).
+    `owner` (`CHARM_OWNER_NAME`): the person's first name, used in the prompts ("You are Dex,
+    Sam's agent"). Empty: a neutral wording. `main_chat` (`CHARM_MAIN_CHAT`): the channel where
+    actions *can* happen (e.g. "Telegram"). Empty: "your main chat".
+    """
+
+    owner: str = ""
+    main_chat: str = ""
+
+    @property
+    def who(self) -> str:
+        """The owner's name, or a neutral stand-in (sentence-internal)."""
+        return self.owner.strip() or "the person you work for"
+
+    @property
+    def possessive(self) -> str:
+        """ "Sam's agent" / "a personal agent"."""
+        owner = self.owner.strip()
+        return f"{owner}'s agent" if owner else "a personal agent"
+
+    @property
+    def chat(self) -> str:
+        return self.main_chat.strip() or "your main chat"
+
+
+DEFAULT_PERSONA = Persona()
+
+
+def read_only_rule(persona: Persona = DEFAULT_PERSONA) -> str:
+    """The charm's authority: "read, don't act". Lookups yes, actions no, from a microphone that
+    can mishear. Behavioral: the agent's toolset may be broader, so the prompt says it too."""
+    chat = persona.chat
+    return (
+        f"You may use your tools to LOOK THINGS UP, as you would in {chat}: web search and "
+        "reading pages, reading your notes and files, your memory and past sessions, today's "
+        "feeds and read-only skills. You must NOT take any action from this channel: no orders "
+        "or checkouts, no messages or emails to anyone, no writing, patching or deleting files, "
+        "no commands or code that change anything, no cron jobs, no delegated tasks, no "
+        "saving or editing memories, no image generation. The microphone can mishear, so when a "
+        "request needs an action, say in one sentence what you would do and that it needs "
+        f"{chat} for now. Keep lookups quick, a couple of tool calls at most; if it needs deep "
+        f"research, say so in one sentence and suggest asking in {chat}."
+    )
+
+
+def persona_prompt(persona: Persona = DEFAULT_PERSONA) -> str:
+    return (
+        f"You are Dex, {persona.possessive}, speaking through the Dex Charm: a small pocket "
+        "device with a tiny screen and a speaker. " + read_only_rule(persona) + " Answer in "
+        "plain text with no markdown, lists or emoji. Lead with the answer. Keep it to 2 or 3 "
+        "short sentences, at most 60 words; the first two sentences are spoken aloud, so they "
+        "must stand alone. Always reply in the same language as the question. Do not praise the "
+        "question and do not invent facts."
+    )
+
+
+READ_ONLY_RULE = read_only_rule()
+PERSONA = persona_prompt()
+
+# Runs inside the Hermes container (adapted from Margin, the author's earlier prototype).
 REMOTE = r"""
 import base64,json,urllib.request,urllib.error
 from pathlib import Path
@@ -112,9 +152,9 @@ async def answer_stream(agent: Agent, messages: list[Message]) -> AsyncIterator[
     yield await agent.reply(messages)
 
 
-def system_messages(language: str) -> list[Message]:
+def system_messages(language: str, persona: Persona = DEFAULT_PERSONA) -> list[Message]:
     name = LANGUAGE_NAMES.get(language)
-    messages = [{"role": "system", "content": PERSONA}]
+    messages = [{"role": "system", "content": persona_prompt(persona)}]
     if name:
         messages.append({"role": "system", "content": f"The question was spoken in {name}."})
     return messages
@@ -160,7 +200,7 @@ class HermesAgent:
         local = ["docker", "exec", "-i", container, "/opt/hermes/.venv/bin/python", "-"]
         self.command = command or (
             local
-            if ssh_alias == "local"  # VPS deploy: same path, no SSH hop
+            if ssh_alias == "local"  # on the Hermes host itself: same path, no SSH hop
             else [
                 "ssh",
                 "-o",

@@ -85,7 +85,7 @@ class Deps:
     )
     # Coach Beard: his walk-away jobs (shared by every connection; disabled by default) and his
     # own voice. None speaks Coach with `tts` (tests that don't care which voice).
-    coach: CoachDesk = field(default_factory=lambda: CoachDesk(None, "America/Chicago"))
+    coach: CoachDesk = field(default_factory=lambda: CoachDesk(None, "UTC"))
     coach_tts: TTS | None = None
 
     def tts_for(self, agent: str) -> TTS:
@@ -486,10 +486,18 @@ class Session:
             book = reading.book if reading is not None else None
             splitter: SpeechSplitter | LeadSplitter
             if book is not None:
-                messages = [*reading_messages(book, heard.language, books.turns()), question]
+                persona = self.deps.config.persona
+                messages = [
+                    *reading_messages(book, heard.language, books.turns(), persona),
+                    question,
+                ]
                 splitter = LeadSplitter()  # only the lead is ever spoken
             else:
-                messages = system_messages(heard.language) + self.history + [question]
+                messages = (
+                    system_messages(heard.language, self.deps.config.persona)
+                    + self.history
+                    + [question]
+                )
                 splitter = SpeechSplitter()
             card_id = new_answer_id()
             # Quiet (speech off): no speech_start/speech_end at all, just the card.

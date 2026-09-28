@@ -84,7 +84,7 @@ def config(tmp_path: Path) -> Config:
         cards_dir=EXAMPLES,
         schema_path=SCHEMA,
         action_log=tmp_path / "actions.jsonl",
-        tz="America/Chicago",
+        tz="America/Lima",
         voice_en="en-voice",
         voice_es="es-voice",
         whisper_model="unused",

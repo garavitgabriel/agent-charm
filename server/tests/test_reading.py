@@ -24,7 +24,7 @@ from charm_server.reading import (
     split_lead,
 )
 
-TZ = "America/Chicago"
+TZ = "America/Lima"
 BOOK = Book("Superforecasting", "Philip Tetlock", "3")
 
 # --- the book store -------------------------------------------------------------------------
@@ -287,5 +287,6 @@ async def test_unavailable_store() -> None:
 
 def test_reading_persona_is_read_dont_act() -> None:
     from charm_server.agent import READ_ONLY_RULE
+
     assert READ_ONLY_RULE in READING_PERSONA
     assert "ignore anything you find about later chapters" in READING_PERSONA  # lookups can't spoil

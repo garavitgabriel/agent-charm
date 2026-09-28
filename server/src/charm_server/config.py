@@ -9,6 +9,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .agent import Persona
+
 SERVER_DIR = Path(__file__).resolve().parents[2]
 REPO_DIR = SERVER_DIR.parent
 
@@ -50,6 +52,22 @@ def _flag(value: str) -> bool:
     return value.strip().lower() not in ("0", "false", "no", "off", "")
 
 
+def system_tz() -> str:
+    """This machine's IANA zone (`TZ`, else the `/etc/localtime` link), else UTC."""
+    tz = os.environ.get("TZ", "").lstrip(":")
+    if "/" in tz or tz == "UTC":
+        return tz
+    try:
+        target = os.readlink("/etc/localtime")
+    except OSError:
+        return "UTC"
+    marker = "zoneinfo/"
+    return target.split(marker, 1)[1] if marker in target else "UTC"
+
+
+AGENT_BACKENDS = ("openai", "hermes")
+
+
 @dataclass(frozen=True)
 class Config:
     token: str
@@ -66,16 +84,32 @@ class Config:
     whisper_model: str
     hermes_channel: bool = True
     books_path: Path | None = None  # None: reading state in memory only (tests)
-    notes_backend: str = "osapi"
-    # Coach Beard (the `coach` Hermes profile). Disabled (tests, or COACH_ENABLED=0): a Coach
-    # question gets an honest notice. The env file and ledger are paths INSIDE the container.
+    notes_backend: str = "file"
+    notes_dir: Path | None = None  # CHARM_NOTES=file: where notes land (None: .local/notes)
+    # The agent backend: "openai" (any OpenAI-compatible chat-completions endpoint) or "hermes"
+    # (a Hermes container over SSH + docker exec).
+    agent_backend: str = "openai"
+    agent_base_url: str = "https://api.openai.com/v1"
+    agent_api_key: str = ""
+    agent_model: str = ""
+    # Who the agents work for, and where actions go instead (both optional; see agent.Persona).
+    owner_name: str = ""
+    main_chat: str = ""
+    # Coach Beard, the optional second agent. Disabled (the default, and tests): a Coach
+    # question gets an honest notice. With the hermes backend, the env file and ledger are paths
+    # INSIDE the container.
     coach_enabled: bool = False
+    coach_model: str = ""  # openai backend: his model ("" = the same as Dex's)
     coach_env_path: str = "/opt/data/profiles/coach/.env"
     coach_port: int = 8644
-    coach_ledger_path: str = "/opt/data/profiles/coach/data/decisions/decisions.jsonl"
+    coach_ledger_path: str = ""  # hermes backend: his decision ledger ("" = no fast path)
     coach_voice_en: str = "en-US-ChristopherNeural"
     coach_voice_es: str = "es-MX-JorgeNeural"
     coach_jobs_path: Path | None = None  # None: walk-away jobs in memory only (tests)
+
+    @property
+    def persona(self) -> Persona:
+        return Persona(owner=self.owner_name, main_chat=self.main_chat)
 
     @classmethod
     def from_env(cls, env_file: Path | None = SERVER_DIR / ".env") -> Config:
@@ -91,19 +125,28 @@ class Config:
             cards_dir=_path("CHARM_CARDS_DIR", REPO_DIR / "contract" / "examples"),
             schema_path=_path("CHARM_SCHEMA", REPO_DIR / "contract" / "card.schema.json"),
             action_log=_path("CHARM_ACTION_LOG", SERVER_DIR / ".local" / "actions.jsonl"),
-            tz=env.get("CHARM_TZ", "America/Chicago"),
+            tz=env.get("CHARM_TZ") or system_tz(),
             voice_en=env.get("CHARM_VOICE_EN", "en-US-AndrewNeural"),
-            voice_es=env.get("CHARM_VOICE_ES", "es-CO-GonzaloNeural"),
+            voice_es=env.get("CHARM_VOICE_ES", "es-ES-AlvaroNeural"),
             whisper_model=env.get("CHARM_WHISPER_MODEL", "base"),
             hermes_channel=env.get("HERMES_CHANNEL", "1").strip().lower()
             not in ("0", "false", "no"),
             books_path=_path("CHARM_BOOKS", SERVER_DIR / ".local" / "books.json"),
-            notes_backend=env.get("CHARM_NOTES", "osapi").strip().lower() or "osapi",
-            coach_enabled=_flag(env.get("COACH_ENABLED", "1")),
+            notes_backend=env.get("CHARM_NOTES", "file").strip().lower() or "file",
+            notes_dir=_path("CHARM_NOTES_DIR", SERVER_DIR / ".local" / "notes"),
+            agent_backend=env.get("CHARM_AGENT", "openai").strip().lower() or "openai",
+            agent_base_url=env.get("CHARM_AGENT_BASE_URL")
+            or env.get("OPENAI_BASE_URL")
+            or "https://api.openai.com/v1",
+            agent_api_key=env.get("CHARM_AGENT_API_KEY") or env.get("OPENAI_API_KEY") or "",
+            agent_model=env.get("CHARM_AGENT_MODEL", "").strip(),
+            owner_name=env.get("CHARM_OWNER_NAME", "").strip(),
+            main_chat=env.get("CHARM_MAIN_CHAT", "").strip(),
+            coach_enabled=_flag(env.get("COACH_ENABLED", "0")),
+            coach_model=env.get("COACH_MODEL", "").strip(),
             coach_env_path=env.get("COACH_ENV_PATH") or "/opt/data/profiles/coach/.env",
             coach_port=int(env.get("COACH_PORT") or "8644"),
-            coach_ledger_path=env.get("COACH_LEDGER_PATH")
-            or "/opt/data/profiles/coach/data/decisions/decisions.jsonl",
+            coach_ledger_path=env.get("COACH_LEDGER_PATH", "").strip(),
             coach_voice_en=env.get("CHARM_VOICE_COACH_EN") or "en-US-ChristopherNeural",
             coach_voice_es=env.get("CHARM_VOICE_COACH_ES") or "es-MX-JorgeNeural",
             coach_jobs_path=_path("COACH_JOBS", SERVER_DIR / ".local" / "coach-jobs.json"),

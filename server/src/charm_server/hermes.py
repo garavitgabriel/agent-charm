@@ -7,11 +7,11 @@ path (`ssh <alias> docker exec -i <container> python -u -c …`) and keeps it op
 one JSON line in; the answer streams back as JSON lines while Hermes generates it.
 
 The worker is an ordinary process, not a service. It reads `API_SERVER_KEY` from an env file inside
-the container (the key never leaves the VPS), calls the container-local chat completions API
+the container (the key never leaves the host), calls the container-local chat completions API
 with `stream: true`, and exits when its stdin closes, which happens when the server stops or the
 SSH connection drops. Nothing here changes Hermes config, crons, skills or the charter.
-Provenance: the SSH → docker exec → local API path and the key handling are Margin's
-(`margin/bridge.py`, see agent.py).
+Provenance: the SSH → docker exec → local API path and the key handling come from Margin, the
+author's earlier prototype (see agent.py).
 
 One worker per agent, same transport: Dex reads `/opt/data/.env` and calls port 8642; Coach Beard
 (the `coach` profile) reads `/opt/data/profiles/coach/.env` and calls port 8644. The env file and
@@ -187,7 +187,7 @@ def worker_bootstrap(env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: s
     return f"import base64;exec(base64.b64decode('{encoded}'))"
 
 
-LOCAL = "local"  # HERMES_SSH_ALIAS=local: the server runs on the Hermes host itself (VPS deploy)
+LOCAL = "local"  # HERMES_SSH_ALIAS=local: the server runs on the Hermes host itself (e.g. a VPS deploy)
 
 
 def ssh_command(

@@ -11,12 +11,12 @@ import pytest
 
 from charm_server.agent import AgentError
 from charm_server.cards import CardValidator
-from charm_server.coach import COACH_PERSONA, CoachDesk, LedgerError
+from charm_server.coach import CoachDesk, LedgerError, coach_persona
 
 from .conftest import FakeAgent, FakeSTT, FakeTTS, Harness, fake, texts, tone, types
 from .test_coach import CALL_REPLY, LEDGER
 
-TZ = "America/Chicago"
+TZ = "America/Lima"
 QUESTION = "Coach, should I start Purdy or Maye?"
 
 
@@ -106,7 +106,7 @@ async def test_a_coach_question_is_a_walk_away_job(harness: Harness, coach: Coac
 
     # Coach got his persona and the question without the wake word; Dex got nothing.
     [messages] = coach.agent.calls
-    assert messages[0] == {"role": "system", "content": COACH_PERSONA}
+    assert messages[0] == {"role": "system", "content": coach_persona(tz=TZ)}
     assert messages[-1] == {"role": "user", "content": "Should I start Purdy or Maye?"}
     assert dex.calls == []
 
