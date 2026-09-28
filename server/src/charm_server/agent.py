@@ -157,15 +157,20 @@ class HermesAgent:
         command: list[str] | None = None,
     ) -> None:
         self.timeout = timeout
-        self.command = command or [
-            "ssh",
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=8",
-            ssh_alias,
-            f"docker exec -i {container} /opt/hermes/.venv/bin/python -",
-        ]
+        local = ["docker", "exec", "-i", container, "/opt/hermes/.venv/bin/python", "-"]
+        self.command = command or (
+            local
+            if ssh_alias == "local"  # VPS deploy: same path, no SSH hop
+            else [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=8",
+                ssh_alias,
+                f"docker exec -i {container} /opt/hermes/.venv/bin/python -",
+            ]
+        )
 
     async def reply(self, messages: list[Message]) -> str:
         script = build_remote_script(messages, http_timeout=max(5.0, self.timeout - 10))

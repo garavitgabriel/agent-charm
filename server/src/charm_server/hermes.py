@@ -164,7 +164,14 @@ def worker_bootstrap() -> str:
     return f"import base64;exec(base64.b64decode('{encoded}'))"
 
 
+LOCAL = "local"  # HERMES_SSH_ALIAS=local: the server runs on the Hermes host itself (VPS deploy)
+
+
 def ssh_command(ssh_alias: str, container: str) -> list[str]:
+    worker = ["/opt/hermes/.venv/bin/python", "-u", "-c", worker_bootstrap()]
+    if ssh_alias == LOCAL:
+        # Same container-local API and in-container key read; only the SSH hop is gone.
+        return ["docker", "exec", "-i", container, *worker]
     return [
         "ssh",
         "-o",

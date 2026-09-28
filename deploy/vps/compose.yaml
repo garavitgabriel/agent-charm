@@ -1,0 +1,24 @@
+# Dex Charm server, next to Hermes on <vps>. Deployed at /docker/dex-charm.
+# Tailscale-only (like os-api): the port binds to the VPS's Tailscale IP, never 0.0.0.0.
+services:
+  charm-server:
+    build:
+      context: ./src
+      dockerfile: deploy/vps/Dockerfile
+    container_name: dex-charm
+    restart: unless-stopped
+    env_file: .env                      # mode 600 on the VPS; never in git (see .env.example)
+    environment:
+      CHARM_HOST: 0.0.0.0
+      CHARM_PORT: "8765"
+      HERMES_SSH_ALIAS: local           # docker exec into Hermes directly; the API key stays inside Hermes
+      HERMES_CONTAINER: hermes-agent
+      CHARM_CARDS_DIR: /app/contract/examples
+      CHARM_ACTION_LOG: /app/server/.local/actions.jsonl
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # for `docker exec` into Hermes only
+      - ./state:/app/server/.local                  # books.json, actions log: survive redeploys
+    ports:
+      - "<host-address>:8765:8765"
+    mem_limit: 1536m
+    cpus: 1.5
