@@ -4,7 +4,7 @@
     uvx --with pillow python docs/media/make_media.py --shots    # first re-render docs/media/screens
 
 `--shots` copies the repo to a temp dir, swaps the simulator's demo data for neutral sample data
-(`SYNTHETIC` below: no real shops, places or projects), builds the sim there and runs
+(`swaps.local.json`, if present), builds the sim there and runs
 `charm-sim --shots`. The repo itself is never modified. Everything is drawn on black.
 """
 
@@ -25,20 +25,13 @@ SCREENS = MEDIA / "screens"
 DEX = REPO / "ui" / "assets-src" / "dex"
 COACH_RENDERS = REPO / "docs" / "design" / "final" / "coach"
 
-# Demo strings in sim/src/sim_script.cpp → neutral sample data (C-escaped, as in the source).
-SYNTHETIC = [
-    ("Pause the side project?", "Pause the side project?"),
-    ("Chicken crepe", "Chicken crepe"),
-    ("Coconut lemonade", "Coconut lemonade"),
-    ('\\"total\\":58400,\\"currency\\":\\"COP\\"', '\\"total\\":18.4,\\"currency\\":\\"USD\\"'),
-    ("Home", "Home"),
-    ("Which Corner Bistro, Downtown or Riverside?", "Which Corner Bistro, Downtown or Riverside?"),
-    ('\\"Downtown\\"', '\\"Downtown\\"'),
-    ('\\"Riverside\\"', '\\"Riverside\\"'),
-    ("Corner Bistro \\xC2\\xB7 DeliveryCo", "Corner Bistro \\xC2\\xB7 Delivery"),
-    ("Corner Bistro", "Corner Bistro"),
-    ("America/Chicago", "America/Chicago"),
-]
+# Optional demo-string swaps for sim/src/sim_script.cpp, as [[old, new], ...] (C-escaped, as in the
+# source). Kept in a gitignored local file so the published script never carries the strings it
+# replaces. Not needed once the sim's demo data is itself synthetic.
+SWAPS_FILE = MEDIA / "swaps.local.json"
+SYNTHETIC: list[tuple[str, str]] = (
+    [tuple(pair) for pair in json.loads(SWAPS_FILE.read_text())] if SWAPS_FILE.is_file() else []
+)
 KEEP = [
     "01-home", "02-listening", "03-working", "04-answer", "05-decision", "06-money-preview",
     "07-money-mid-hold", "08-done", "09-live-tracker", "10-pocket-edition", "11-job-done",
