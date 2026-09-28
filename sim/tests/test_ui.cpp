@@ -8,11 +8,13 @@
 #include "test_host.h"
 #include "ui_card.h"
 #include "ui_hold.h"
+#include "ui_motion.h"
 #include "ui_time.h"
 
 #include <ArduinoJson.h>
 #include <algorithm>
 #include <dirent.h>
+#include <math.h>
 #include <fstream>
 #include <sstream>
 #include <stdio.h>
@@ -706,6 +708,328 @@ static void test_lvgl_memory() {
             (unsigned)m.total_size);
 }
 
+// ---------------------------------------------------------------- design § 11 motion + reading (batch 9)
+
+static lv_obj_t *ui_button(const char *id) { return charm_ui_debug_ui_button(id); }
+
+static const char *const READING_BOOK = "{\"title\":\"Piranesi\",\"author\":\"Susanna Clarke\",\"chapter\":\"7\"}";
+
+static void enter_reading() {
+    feed(std::string("{\"type\":\"mode\",\"value\":\"reading\",\"book\":") + READING_BOOK + "}");
+}
+
+// motion.md: the separator fuse grows 0 -> 320 px over the 25 s listen limit (contract, not the
+// render's 30 s), in 250 ms steps, and the recording ends at the end of the fuse.
+static void test_fuse_25s() {
+    CHECK_EQ(motion::fuse_px(0, 320), 0);
+    CHECK_EQ(motion::fuse_px(249, 320), 0);
+    CHECK_EQ(motion::fuse_px(250, 320), 3);            // 320 * 250 / 25000 = 3.2 -> 3
+    CHECK_EQ(motion::fuse_px(12500, 320), 160);        // half the listen limit, half the rule
+    CHECK_EQ(motion::fuse_px(12600, 320), 160);        // redrawn only every 250 ms
+    CHECK_EQ(motion::fuse_px(25000, 320), 320);
+    CHECK_EQ(motion::FUSE_MS, (uint32_t)25000);
+
+    fresh();
+    charm_ui_talk_pressed();
+    CHECK(charm_ui_debug_listening());
+    run(12500);
+    CHECK(charm_ui_debug_fuse_px() >= 155 && charm_ui_debug_fuse_px() <= 160);
+    run(12400);  // 24.9 s: still listening, the fuse is almost full
+    CHECK(charm_ui_debug_listening());
+    CHECK(charm_ui_debug_fuse_px() > 310 && charm_ui_debug_fuse_px() < 320);
+    run(200);  // past 25 s: ends as if released, with reason "limit"
+    CHECK(!charm_ui_debug_listening());
+    CHECK_EQ(host.mic_stops.size(), (size_t)1);
+    if (!host.mic_stops.empty()) CHECK_EQ(host.mic_stops[0], std::string("limit"));
+    CHECK(charm_ui_debug_surface() == CharmSurface::Working);
+    run(300);  // the fuse fades out over 200 ms
+    CHECK_EQ(charm_ui_debug_fuse_px(), 0);
+
+    // Released early: the fuse stops and fades; nothing about it says "limit".
+    fresh();
+    charm_ui_talk_pressed();
+    run(3000);
+    charm_ui_talk_released();
+    CHECK_EQ(host.mic_stops.size(), (size_t)1);
+    if (!host.mic_stops.empty()) CHECK_EQ(host.mic_stops[0], std::string("released"));
+    run(300);
+    CHECK_EQ(charm_ui_debug_fuse_px(), 0);
+}
+
+// The voice stream spawns from mic amplitude (80 ms samples), never in silence, and drains on release.
+static void test_voice_stream() {
+    motion::VoiceStream vs;
+    vs.begin(1000);
+    vs.update(1100, 0.9f);  // before the 120 ms first-capsule delay
+    CHECK(vs.empty());
+    vs.update(1120, 0.9f);
+    CHECK_EQ(vs.caps.size(), (size_t)1);
+    vs.update(1600, 0.0f);  // silence: no spawns
+    CHECK_EQ(vs.caps.size(), (size_t)1);
+    CHECK(vs.caps[0].width >= 4.0f && vs.caps[0].width <= 10.0f);
+    CHECK(vs.caps[0].len >= 0.04f && vs.caps[0].len <= 0.12f);
+    vs.update(1120 + 900 + 200, 0.0f);  // transit 900 ms: gone at the hand
+    CHECK(vs.empty());
+    const motion::Pt edge = motion::stream_point(0, {306, 306}), hand = motion::stream_point(1, {306, 306});
+    CHECK(edge.x < 0 && hand.x == 306 && hand.y == 306);
+
+    fresh();
+    charm_ui_talk_pressed();
+    run(1000);
+    CHECK_EQ(charm_ui_debug_capsules(), (size_t)0);  // silence
+    charm_ui_mic_level(0.7f);
+    run(400);
+    CHECK(charm_ui_debug_capsules() >= 3);
+    charm_ui_talk_released();  // capsules in flight finish; no new ones
+    run(1200);
+    CHECK_EQ(charm_ui_debug_capsules(), (size_t)0);
+}
+
+// The 2 s bag hold: 20 fill steps, "Ordering…" on the first tick, an early release drains in 300 ms
+// and sends nothing, a full hold sends held_ms, and Done appears only after the server confirms.
+static void test_bag_hold_timing() {
+    motion::BagFill f;
+    f.press(0, 2000);
+    CHECK(f.level(99) == 0.0f);
+    CHECK(fabsf(f.level(100) - 0.05f) < 1e-6f);
+    CHECK(fabsf(f.level(1250) - 0.60f) < 1e-6f);  // 12 of 20 steps
+    CHECK(fabsf(f.level(1999) - 0.95f) < 1e-6f);
+    CHECK(f.level(2000) == 1.0f);
+    f.release(1000);  // at 0.5
+    CHECK(fabsf(f.level(1000) - 0.5f) < 1e-6f);
+    CHECK(f.level(1100) < 0.5f && f.level(1100) > 0.0f);
+    CHECK(f.level(1300) == 0.0f);
+
+    fresh();
+    feed_example("money.json");
+    run(20);
+    CHECK_EQ(charm_ui_debug_hold_label(), std::string("Hold Dex\nto order"));
+    CHECK(dex_get_pose() == DEX_POSE_OFFER_BAG);
+    lv_obj_t *bag = charm_ui_debug_action_button("confirm");
+    CHECK(bag != nullptr);
+    if (!bag) return;
+    // The hold control is Dex's bag: in the anchor zone, right of the rail, >= 56 px.
+    lv_area_t a;
+    lv_obj_get_coords(bag, &a);
+    CHECK(a.y1 >= 209 && a.x1 > 172);
+    CHECK(lv_area_get_width(&a) >= 56 && lv_area_get_height(&a) >= 56);
+
+    press(bag);
+    run(60);
+    CHECK_EQ(charm_ui_debug_hold_label(), std::string("Ordering\xE2\x80\xA6"));
+    CHECK(dex_get_pose() == DEX_POSE_LIFT_BAG);
+    run(1140);  // ~1.2 s held
+    CHECK(charm_ui_debug_bag_fill() >= 0.55f && charm_ui_debug_bag_fill() <= 0.65f);
+    release_at(bag);
+    run(40);
+    CHECK_EQ(sent_of("action").size(), (size_t)0);  // early release sends nothing
+    CHECK(charm_ui_debug_bag_fill() > 0.0f);        // ...and drains rather than snapping
+    run(300);
+    CHECK_EQ(charm_ui_debug_bag_fill(), 0.0f);
+    CHECK_EQ(charm_ui_debug_hold_label(), std::string("Hold Dex\nto order"));
+    CHECK(dex_get_pose() == DEX_POSE_OFFER_BAG);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Money);  // no message, no error
+
+    bag = charm_ui_debug_action_button("confirm");
+    press(bag);
+    run(2100);
+    auto actions = sent_of("action");
+    CHECK_EQ(actions.size(), (size_t)1);
+    if (!actions.empty()) CHECK((actions[0]["held_ms"] | 0u) >= 2000u);
+    sim_pointer_set(0, 0, false);
+    run(400);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Money);  // sent is not confirmed: no Done
+    CHECK_EQ(charm_ui_debug_bag_fill(), 1.0f);                // the full bag, waiting
+    CHECK(!charm_ui_debug_done_shown());
+    feed("{\"type\":\"state\",\"value\":\"done\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Done);
+    CHECK(charm_ui_debug_done_shown());
+    CHECK(dex_get_pose() == DEX_POSE_DONE);
+    // money.json is a fixture: even confirmed, it never claims "Ordered."
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Sample order."));
+
+    // A non-fixture order says "Ordered." once confirmed.
+    fresh();
+    std::string real = example("money.json");
+    const size_t fx = real.find("\"fixture\":true");
+    CHECK(fx != std::string::npos);
+    if (fx != std::string::npos) real.replace(fx, strlen("\"fixture\":true"), "\"fixture\":false");
+    feed_card(real);
+    run(20);
+    press(charm_ui_debug_action_button("confirm"));
+    run(2100);
+    sim_pointer_set(0, 0, false);
+    run(100);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Money);
+    feed("{\"type\":\"state\",\"value\":\"done\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Done);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Ordered."));
+}
+
+// Content exit (120 ms) + staggered enter never costs a receipt, however fast frames arrive.
+static void test_enter_exit_receipts() {
+    fresh();
+    feed_example("decision.json");
+    CHECK(charm_ui_debug_transitioning());
+    feed_example("job.json");      // arrives while the decision is still entering
+    feed_example("tracker.json");  // and again, mid-exit of the job
+    CHECK_EQ(displayed_count("dec-001"), 1);
+    CHECK_EQ(displayed_count("job-001"), 1);
+    CHECK_EQ(displayed_count("trk-001"), 1);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Tracker);
+    run(700);
+    CHECK(!charm_ui_debug_transitioning());
+    CHECK_EQ(displayed_count("trk-001"), 1);
+    // Dismissing mid-transition returns to the previous card, which already has its receipt.
+    feed("{\"type\":\"dismiss\",\"card_id\":\"trk-001\"}");
+    run(30);
+    CHECK(charm_ui_debug_surface() == CharmSurface::Job);
+    CHECK_EQ(displayed_count("job-001"), 1);
+    // A replaced card (same id) earns a fresh receipt, even mid-enter.
+    feed_card("{\"id\":\"job-001\",\"kind\":\"job\",\"title\":\"PR #42 re-reviewed\",\"source\":\"github\","
+              "\"created_at\":\"2026-09-25T18:00:00-05:00\"}");
+    CHECK_EQ(displayed_count("job-001"), 2);
+    // Buttons are live while their content is still entering.
+    fresh();
+    feed_example("job.json");
+    click(charm_ui_debug_action_button("send_claude"));
+    CHECK_EQ(sent_of("action").size(), (size_t)1);
+}
+
+// Speak/quiet is shown only from the server's `setting` echo; a tap alone changes nothing.
+static void test_reading_toggle_echo() {
+    fresh();
+    enter_reading();
+    CHECK(charm_ui_debug_surface() == CharmSurface::ReadingHome);
+    CHECK(dex_get_outfit() == DEX_OUTFIT_READING);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Piranesi"));
+    CHECK_EQ(charm_ui_debug_speech(), std::string("off"));  // PROTOCOL: reading defaults to quiet
+    click(ui_button("speech"));
+    auto settings = sent_of("setting");
+    CHECK_EQ(settings.size(), (size_t)1);
+    if (!settings.empty()) {
+        CHECK_EQ(std::string(settings[0]["name"] | ""), std::string("speech"));
+        CHECK_EQ(std::string(settings[0]["value"] | ""), std::string("on"));
+    }
+    run(500);
+    CHECK_EQ(charm_ui_debug_speech(), std::string("off"));  // no echo yet: unchanged
+    feed("{\"type\":\"setting\",\"name\":\"speech\",\"value\":\"on\"}");
+    CHECK_EQ(charm_ui_debug_speech(), std::string("on"));
+
+    // No echo at all: after 3 s the toggle springs back and the state never changed.
+    host.sent.clear();
+    click(ui_button("speech"));
+    CHECK_EQ(sent_of("setting").size(), (size_t)1);
+    run(3200);
+    CHECK_EQ(charm_ui_debug_speech(), std::string("on"));
+    // An echo that disagrees with the tap wins (the server decides).
+    feed("{\"type\":\"setting\",\"name\":\"speech\",\"value\":\"on\"}");
+    CHECK_EQ(charm_ui_debug_speech(), std::string("on"));
+    feed("{\"type\":\"mode\",\"value\":\"default\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Home);
+}
+
+// Saved only on data.saved:true; "Not saved." (no check, Offline frown) on false.
+static void test_saved_true_false() {
+    fresh();
+    enter_reading();
+    feed_card(example("reading/notice-saved.json"));
+    CHECK(charm_ui_debug_surface() == CharmSurface::Saved);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Saved."));
+    CHECK(dex_get_pose() == DEX_POSE_DONE);
+    CHECK(charm_ui_debug_headline().find("\xE2\x9C\x93") == std::string::npos);  // no ✓
+    CHECK_EQ(displayed_count("ntc-saved-001"), 1);
+
+    fresh();
+    enter_reading();
+    feed("{\"type\":\"state\",\"value\":\"working\",\"label\":\"Saving\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Working);
+    feed("{\"type\":\"error\",\"code\":\"save_failed\",\"text\":\"The note store didn't confirm.\"}");
+    feed_card("{\"id\":\"ntc-f\",\"kind\":\"notice\",\"title\":\"Not saved\",\"body\":\"Not saved.\",\"source\":\"dex\","
+              "\"created_at\":\"2026-09-27T21:12:00-05:00\",\"data\":{\"saved\":false}}");
+    feed("{\"type\":\"state\",\"value\":\"idle\"}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Saved);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Not saved."));
+    CHECK(dex_get_pose() == DEX_POSE_OFFLINE);
+    CHECK(dex_get_pose() != DEX_POSE_DONE);
+
+    // A plain notice is not a save receipt.
+    fresh();
+    feed_example("notice.json");
+    CHECK(charm_ui_debug_surface() == CharmSurface::Answer);
+}
+
+// The lead + detail share one column that rests on whole lines; text size steps 18/22/26.
+static void test_reading_answer_scroll() {
+    fresh();
+    enter_reading();
+    feed_card(example("reading/answer-reading.json"));
+    CHECK(charm_ui_debug_surface() == CharmSurface::ReadingAnswer);
+    CHECK_EQ(charm_ui_debug_scroll(), 0);
+    CHECK(charm_ui_debug_scroll_max() > 0);
+    CHECK(dex_get_pose() != DEX_POSE_SPEAKING);  // quiet: no talking mouth
+    CHECK(ui_button("read_more") != nullptr);
+    click(ui_button("read_more"));
+    run(400);
+    const int top = charm_ui_debug_scroll();
+    CHECK(top > 0);
+    CHECK(ui_button("read_more") == nullptr);  // in the detail: the size controls instead
+    CHECK(ui_button("larger") != nullptr && ui_button("smaller") != nullptr);
+    CHECK_EQ(charm_ui_debug_read_step(), 1);
+    click(ui_button("larger"));
+    run(700);
+    CHECK_EQ(charm_ui_debug_read_step(), 2);
+    CHECK(ui_button("larger") == nullptr);  // at the end, that control isn't drawn
+    // Snapping: a drag leaves the column on the line grid.
+    CHECK_EQ(motion::snap_scroll(47, 21, 5, 160, 32, 400), 42);
+    CHECK_EQ(motion::snap_scroll(190, 21, 5, 160, 32, 400), 192);
+    CHECK_EQ(motion::snap_scroll(999, 21, 5, 160, 32, 400), 400);
+    int x = 0, len = 0;
+    CHECK(!motion::scroll_thumb(0, 100, 160, 24, 320, &x, &len));  // fits: no thumb
+    CHECK(motion::scroll_thumb(0, 640, 160, 24, 320, &x, &len) && x == 24 && len == 80);
+    CHECK(motion::scroll_thumb(480, 640, 160, 24, 320, &x, &len) && x + len == 344);
+    // Swipe right: detail -> lead -> reading home.
+    charm_ui_debug_swipe(LV_DIR_RIGHT);
+    run(400);
+    CHECK_EQ(charm_ui_debug_scroll(), 0);
+    charm_ui_debug_swipe(LV_DIR_RIGHT);
+    run(30);
+    CHECK(charm_ui_debug_surface() == CharmSurface::ReadingHome);
+    // Speech in reading shows the speaking pose only while speech actually plays.
+    charm_ui_debug_tap();
+    run(30);
+    feed("{\"type\":\"speech_start\",\"rate\":16000,\"format\":\"s16le\",\"channels\":1}");
+    CHECK(dex_get_pose() == DEX_POSE_SPEAKING);
+}
+
+// Every surface: the design's single scale and zones (no mini Dex, nothing in the content zone below 190).
+static void test_design_invariants() {
+    fresh();
+    CHECK(dex_get_size() == DEX_SIZE_FULL);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Nothing needs you"));
+    feed("{\"type\":\"state\",\"value\":\"working\",\"agent\":\"dex\",\"label\":\"Asking Dex...\"}");
+    run(1300);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("Asking Dex"));  // dots step on their own
+    charm_ui_set_connected(false);
+    CHECK_EQ(charm_ui_debug_headline(), std::string("No connection"));
+    CHECK(dex_get_size() == DEX_SIZE_FULL);
+    charm_ui_set_connected(true);
+    // A decision with no default is "needs more": Dex shrugs, every choice is a pill.
+    feed_card("{\"id\":\"q-1\",\"kind\":\"decision\",\"title\":\"Downtown or Riverside?\",\"source\":\"dex\","
+              "\"created_at\":\"2026-09-25T18:00:00-05:00\",\"data\":{\"deadline\":\"now\"},"
+              "\"actions\":[{\"id\":\"a\",\"label\":\"Downtown\"},{\"id\":\"b\",\"label\":\"Riverside\"}]}");
+    CHECK(charm_ui_debug_surface() == CharmSurface::NeedsMore);
+    CHECK(dex_get_pose() == DEX_POSE_ERROR);
+    CHECK(charm_ui_debug_action_button("a") && charm_ui_debug_action_button("b"));
+    // The decision's default rides on Dex's placard (in the anchor zone, right of the rail).
+    fresh();
+    feed_example("decision.json");
+    CHECK(dex_get_pose() == DEX_POSE_ASK_YES);
+    lv_area_t a;
+    lv_obj_get_coords(charm_ui_debug_action_button("approve"), &a);
+    CHECK(a.y1 >= 209 && a.x1 > 240);
+}
+
 int main() {
     sim_display_init();
     struct {
@@ -733,6 +1057,14 @@ int main() {
         {"hidden_card_and_home_tap", test_hidden_card_and_home_tap},
         {"protocol_clarifications", test_protocol_clarifications},
         {"lvgl_memory", test_lvgl_memory},
+        {"fuse_25s", test_fuse_25s},
+        {"voice_stream", test_voice_stream},
+        {"bag_hold_timing", test_bag_hold_timing},
+        {"enter_exit_receipts", test_enter_exit_receipts},
+        {"reading_toggle_echo", test_reading_toggle_echo},
+        {"saved_true_false", test_saved_true_false},
+        {"reading_answer_scroll", test_reading_answer_scroll},
+        {"design_invariants", test_design_invariants},
     };
     for (auto &t : tests) {
         g_test = t.name;
