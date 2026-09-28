@@ -1,15 +1,36 @@
+# OS / editors
 .DS_Store
+.vscode/
+.idea/
+
+# Secrets: never commit these
 .env
-*.local.json
+.env.*
+!.env.example
 secrets.h
+*.local.json
+*.pem
+*.key
+.os-api.env
+
+# Build outputs
 .pio/
 build/
 out/
+*.bin
+*.elf
+
+# Python caches and envs
 __pycache__/
 .venv/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.cache/
+
+# Local state (reading sessions, notes, action logs, backups)
+.local/
+
+# Audio scratch (fixtures excepted)
 *.wav
 !**/fixtures/**/*.wav
-notes/.venv/
