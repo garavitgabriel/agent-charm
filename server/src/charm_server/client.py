@@ -262,7 +262,8 @@ class Device:
         elif kind == "mode":
             book = m.get("book") or {}
             about = " · ".join(str(book[k]) for k in ("title", "author", "chapter") if k in book)
-            print(f"{at} mode {m.get('value')}" + (f" ({about})" if about else ""))
+            who = f" agent={m['agent']}" if "agent" in m else ""
+            print(f"{at} mode {m.get('value')}{who}" + (f" ({about})" if about else ""))
         elif kind == "setting":
             print(f"{at} setting {m.get('name')}={m.get('value')}")
         elif kind == "pong":

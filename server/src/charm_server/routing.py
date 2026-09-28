@@ -129,7 +129,7 @@ _RECENT_ES = r"(?:ultima|mas reciente)"
 _WHO = r"(?:coach(?: beard)?|entrenador)"
 # Naming Coach: works whoever it's addressed to.
 _LATEST = re.compile(
-    rf"\b(?:{_WHO}'?s? {_RECENT_EN} {_CALL}|{_RECENT_EN} {_CALL} (?:from|by|of) {_WHO}|"
+    rf"\b(?:{_WHO}(?:'s|'|es|s)? {_RECENT_EN} {_CALL}|{_RECENT_EN} {_CALL} (?:from|by|of) {_WHO}|"
     rf"what did {_WHO} (?:call|decide|pick)|"
     rf"{_RECENT_ES} {_CALL} (?:de|del) {_WHO}|que (?:decidio|dijo) (?:el )?{_WHO})\b"
 )

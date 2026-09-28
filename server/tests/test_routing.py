@@ -72,6 +72,8 @@ def test_near_misses_stay_with_dex(text: str) -> None:
     "text",
     [
         "What's Coach's latest call?",
+        "What's Coaches latest call?",  # as Whisper heard it live, 2026-09-28
+        "whats coachs latest call",
         "what is coach's last call",
         "Tell me Coach Beard's latest decision",
         "Coach, what's your latest call?",
