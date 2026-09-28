@@ -138,3 +138,19 @@ the screen facing up depends on how the IMU is mounted, so it's `face_up_z_sign`
 - Wi-Fi modem sleep is off (`WiFi.setSleep(false)`) for steady audio streaming. That costs
   battery; revisit once power matters.
 - `ws://` only. `wss://` for the VPS needs certificates configured; not done in v0.
+
+## Connecting to the VPS (public, encrypted), added 2026-09-28
+
+The charm server runs on the Hermes VPS. Its public address is a Tailscale Funnel on port 8443,
+path `/charm` only: `wss://<machine>.<tailnet>.ts.net:8443/charm`. In `src/secrets.h`:
+
+```c
+#define CHARM_SERVER_HOST "<machine>.<tailnet>.ts.net"
+#define CHARM_SERVER_PORT 8443
+#define CHARM_SERVER_PATH "/charm"
+#define CHARM_SERVER_TLS 1   // verified against the Let's Encrypt roots in src/ca_roots.h
+#define CHARM_TOKEN "..."    // = CHARM_TOKEN in /docker/dex-charm/.env on the VPS
+```
+
+TLS adds about 700 KB of flash and 23 KB of RAM (42 % flash, 49 % RAM in total). A wrong token gets
+"This charm isn't paired" (4401).

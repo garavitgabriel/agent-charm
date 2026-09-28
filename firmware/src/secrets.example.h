@@ -11,6 +11,9 @@
 #define CHARM_SERVER_HOST "192.168.1.10"
 #define CHARM_SERVER_PORT 8765
 #define CHARM_SERVER_PATH "/charm"
+// 1 = wss:// verified against the Let's Encrypt roots (the public Tailscale Funnel address on the VPS:
+// host "<machine>.<tailnet>.ts.net", port 8443). 0 = plain ws:// on your LAN.
+#define CHARM_SERVER_TLS 0
 
 // Must equal the server's CHARM_TOKEN environment variable.
 #define CHARM_TOKEN "change-me"

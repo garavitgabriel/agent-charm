@@ -10,6 +10,9 @@
 #include "audio_util.h"
 #include "backoff.h"
 #include "config.h"
+#if CHARM_SERVER_TLS
+#include "ca_roots.h"
+#endif
 #include "frames.h"
 
 namespace net {
@@ -224,7 +227,12 @@ bool begin() {
     WiFi.setSleep(false);  // modem sleep adds latency to the audio stream
     WiFi.setAutoReconnect(true);
     WiFi.begin(CHARM_WIFI_SSID, CHARM_WIFI_PASSWORD);
+#if CHARM_SERVER_TLS
+    // wss:// behind Tailscale Funnel: verify the server against the Let's Encrypt roots.
+    ws.beginSslWithCA(CHARM_SERVER_HOST, CHARM_SERVER_PORT, CHARM_SERVER_PATH, CHARM_CA_ROOTS);
+#else
     ws.begin(CHARM_SERVER_HOST, CHARM_SERVER_PORT, CHARM_SERVER_PATH);
+#endif
     ws.onEvent(on_event);
     xTaskCreatePinnedToCore(task, "charm-net", 8192, nullptr, 4, nullptr, 0);
     return true;
