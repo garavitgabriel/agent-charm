@@ -1,5 +1,5 @@
-"""Sprite sheets -> ui/charm_assets_sprites.{h,cpp}: LVGL 8.3 lv_img_dsc_t frames + a pose x outfit
-table that ui/dex_sprite.cpp plays.
+"""Sprite sheets -> ui/charm_assets_sprites.{h,cpp}: LVGL 8.3 lv_img_dsc_t frames + a
+character x pose x outfit table that ui/dex_sprite.cpp plays.
 
 Pixel format. Every frame uses the same format, whichever of these is smaller:
   * LV_IMG_CF_INDEXED_{1,2,4,8}BIT: a (2**bpp)-entry lv_color32_t palette, then rows of indices
@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from PIL import Image
 
 from . import cgen, palette
-from .manifest import OUTFITS, POSES, ManifestError, SpriteSpec
+from .manifest import CHARACTERS, OUTFITS, POSES, ManifestError, SpriteSpec
 
 RGB = tuple[int, int, int]
 
@@ -114,15 +114,30 @@ def cell_indices(img: Image.Image, col: int, row: int, spec: SpriteSpec, where: 
     return bytes(out)
 
 
+Table = dict[tuple[str, str], list[tuple[int, int]]]  # (pose, outfit) -> [(image index, ms)]
+
+
 @dataclass
 class SpriteBuild:
     encoding: Encoding
     images: list[bytes] = field(default_factory=list)  # unique encoded frames
-    # (pose, outfit) -> [(image index, ms)], after outfit fallback
-    table: dict[tuple[str, str], list[tuple[int, int]]] = field(default_factory=dict)
-    fallbacks: list[tuple[str, str]] = field(default_factory=list)  # filled from default
+    # character -> its table, after outfit fallback (within the character only)
+    tables: dict[str, Table] = field(default_factory=lambda: {c: {} for c in CHARACTERS})
+    # character -> the pose/outfits filled from its own default outfit
+    borrowed: dict[str, list[tuple[str, str]]] = field(
+        default_factory=lambda: {c: [] for c in CHARACTERS}
+    )
     warnings: list[str] = field(default_factory=list)
     frame_refs: int = 0
+
+    # Dex's table (the primary character), as before the character dimension.
+    @property
+    def table(self) -> Table:
+        return self.tables["dex"]
+
+    @property
+    def fallbacks(self) -> list[tuple[str, str]]:
+        return self.borrowed["dex"]
 
     @property
     def data_bytes(self) -> int:
@@ -151,17 +166,18 @@ def build(spec: SpriteSpec) -> SpriteBuild:
                 result.images.append(encode(idx, spec.cell_w, spec.cell_h, spec.palette, enc))
             frames.append((seen[idx], f.ms))
             result.frame_refs += 1
-        result.table[(a.pose, a.outfit)] = frames
+        result.tables[a.character][(a.pose, a.outfit)] = frames
 
-    if spec.outfit_fallback:
-        for pose in POSES:
-            base = result.table.get((pose, "default"))
-            if not base:
-                continue
-            for outfit in OUTFITS[1:]:
-                if (pose, outfit) not in result.table:
-                    result.table[(pose, outfit)] = base
-                    result.fallbacks.append((pose, outfit))
+    if spec.outfit_fallback:  # never across characters: Coach doesn't borrow Dex's frames
+        for character, table in result.tables.items():
+            for pose in POSES:
+                base = table.get((pose, "default"))
+                if not base:
+                    continue
+                for outfit in OUTFITS[1:]:
+                    if (pose, outfit) not in table:
+                        table[(pose, outfit)] = base
+                        result.borrowed[character].append((pose, outfit))
     return result
 
 
@@ -177,15 +193,20 @@ def render(
     enc = result.encoding
     head = cgen.banner("Dex sprite frames for ui/dex_sprite.cpp.", command, sources)
     fb = frame_bytes(spec.cell_w, spec.cell_h, enc)
-    drawn = sorted(k for k in result.table if k not in result.fallbacks)
+    drawn = [
+        (character, pose, outfit)
+        for character, table in result.tables.items()
+        for pose, outfit in sorted(k for k in table if k not in result.borrowed[character])
+    ]
     h = [
         head,
         "#pragma once",
         "#include <stdint.h>",
         "#include <lvgl.h>",
         "",
-        f"// {len(drawn)} pose/outfit animations drawn, {len(result.fallbacks)} borrowed from the "
-        f"default outfit; {result.frame_refs} frames, {len(result.images)} unique images.",
+        f"// {len(drawn)} character/pose/outfit animations drawn, "
+        f"{sum(len(b) for b in result.borrowed.values())} borrowed from the character's default "
+        f"outfit; {result.frame_refs} frames, {len(result.images)} unique images.",
         f"// Format {enc.cf}: {fb} bytes a frame, {result.data_bytes} bytes of pixel data in all.",
         f"// A full set (9 poses x 6 outfits x 4 frames) at this cell and palette: "
         f"~{estimate_full_set(spec) // 1024} KiB.",
@@ -198,6 +219,7 @@ def render(
         f"#define CHARM_SPRITE_MINI_Y {spec.mini_y}",
         f"#define CHARM_SPRITE_CF {enc.cf}",
         f"#define CHARM_SPRITE_INDEXED_BPP {enc.bpp}  // 0 = true color + alpha",
+        f"#define CHARM_SPRITE_CHARACTERS {len(CHARACTERS)}  // " + ", ".join(CHARACTERS),
         f"#define CHARM_SPRITE_POSES {len(POSES)}",
         f"#define CHARM_SPRITE_OUTFITS {len(OUTFITS)}",
         "",
@@ -211,11 +233,13 @@ def render(
         "    uint8_t count;",
         "};",
         "",
-        "// [pose][outfit] in dex_pose_t / dex_outfit_t order:",
-        "//   poses:   " + ", ".join(POSES),
-        "//   outfits: " + ", ".join(OUTFITS),
-        "extern const charm_sprite_anim_t charm_sprite_anims[CHARM_SPRITE_POSES]"
-        "[CHARM_SPRITE_OUTFITS];",
+        "// [character][pose][outfit] in dex_character_t / dex_pose_t / dex_outfit_t order:",
+        "//   characters: " + ", ".join(CHARACTERS),
+        "//   poses:      " + ", ".join(POSES),
+        "//   outfits:    " + ", ".join(OUTFITS),
+        "// A character never borrows another's frames: no art is {nullptr, 0}.",
+        "extern const charm_sprite_anim_t charm_sprite_anims[CHARM_SPRITE_CHARACTERS]"
+        "[CHARM_SPRITE_POSES][CHARM_SPRITE_OUTFITS];",
         "",
     ]
 
@@ -249,24 +273,28 @@ def render(
             "",
         ]
     names: dict[int, str] = {}  # id(frame list) -> array name, so fallbacks share one array
-    for pose, outfit in drawn:
-        frames = result.table[(pose, outfit)]
-        name = f"{pose}_{outfit}"
+    for character, pose, outfit in drawn:
+        frames = result.tables[character][(pose, outfit)]
+        name = f"{pose}_{outfit}" if character == "dex" else f"{character}_{pose}_{outfit}"
         names[id(frames)] = name
         body = ", ".join(f"{{&img{i}, {ms}}}" for i, ms in frames)
         c.append(f"const charm_sprite_frame_t {name}[] = {{{body}}};")
     c += ["", "}  // namespace", ""]
     c.append(
-        "const charm_sprite_anim_t charm_sprite_anims[CHARM_SPRITE_POSES][CHARM_SPRITE_OUTFITS] = {"
+        "const charm_sprite_anim_t charm_sprite_anims[CHARM_SPRITE_CHARACTERS][CHARM_SPRITE_POSES]"
+        "[CHARM_SPRITE_OUTFITS] = {"
     )
-    for pose in POSES:
-        cells = []
-        for outfit in OUTFITS:
-            got = result.table.get((pose, outfit))
-            if got:
-                cells.append(f"{{{names[id(got)]}, {len(got)}}}")
-            else:
-                cells.append("{nullptr, 0}")
-        c.append(f"    /* {pose:<9} */ {{" + ", ".join(cells) + "},")
+    for character, table in result.tables.items():
+        c.append(f"  /* {character} */ {{")
+        for pose in POSES:
+            cells = []
+            for outfit in OUTFITS:
+                got = table.get((pose, outfit))
+                if got:
+                    cells.append(f"{{{names[id(got)]}, {len(got)}}}")
+                else:
+                    cells.append("{nullptr, 0}")
+            c.append(f"    /* {pose:<10} */ {{" + ", ".join(cells) + "},")
+        c.append("  },")
     c += ["};", ""]
     return "\n".join(h), "\n".join(c)

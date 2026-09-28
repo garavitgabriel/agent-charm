@@ -78,7 +78,12 @@ bool nonblack(int x0, int y0, int w, int h) {
     return false;
 }
 
-const charm_sprite_anim_t &A(dex_pose_t p, dex_outfit_t o = DEX_OUTFIT_DEFAULT) { return charm_sprite_anims[p][o]; }
+const charm_sprite_anim_t &A(dex_pose_t p, dex_outfit_t o = DEX_OUTFIT_DEFAULT) {
+    return charm_sprite_anims[DEX_CHARACTER_DEX][p][o];
+}
+const charm_sprite_anim_t &AC(dex_pose_t p, dex_outfit_t o = DEX_OUTFIT_DEFAULT) {
+    return charm_sprite_anims[DEX_CHARACTER_COACH][p][o];
+}
 uint32_t fnv(uint16_t img) { return charm_sprite_imgs[img].fnv; }
 uint32_t fnv_frame(dex_pose_t p, int i, dex_outfit_t o = DEX_OUTFIT_DEFAULT) { return fnv(A(p, o).frames[i].img); }
 
@@ -285,6 +290,93 @@ int main(int argc, char **argv) {
     dex_set_hidden(true);
     CHECK(!dex_get_point_area(DEX_POINT_HAND, &hand));
     dex_set_hidden(false);
+
+    // Coach (the dummy test card): the same anchor and cell, his own frames, and the gray
+    // placeholder, never Dex's frames, for a pose he has no frames for.
+    auto has_gray = [&]() {
+        sim_render_now();
+        const lv_color_t gray = lv_color_hex(0x505050);
+        const lv_color_t *fb = sim_framebuffer();
+        for (int y = Y0; y < Y0 + H; y++) {
+            for (int x = X0; x < X0 + W; x++) {
+                if (fb[y * CHARM_W + x].full == gray.full) return true;
+            }
+        }
+        return false;
+    };
+    // Which Coach image of `a` is on screen (any breathing offset), or -1.
+    auto shows_one_of = [&](const charm_sprite_anim_t &a) {
+        const int img = shown();
+        for (int i = 0; i < a.count; i++) {
+            if (img == a.frames[i].img) return true;
+        }
+        return false;
+    };
+    const dex_pose_t coach_poses[] = {DEX_POSE_IDLE, DEX_POSE_LISTENING, DEX_POSE_WORKING, DEX_POSE_SPEAKING};
+    const char *const coach_shots[] = {"coach-idle.png", "coach-listening.png", "coach-working.png",
+                                       "coach-speaking.png"};
+    dex_set_pose(DEX_POSE_IDLE);
+    dex_set_character(DEX_CHARACTER_COACH);
+    CHECK(dex_get_character() == DEX_CHARACTER_COACH);
+    for (int k = 0; k < 4; k++) {
+        const dex_pose_t p = coach_poses[k];
+        const charm_sprite_anim_t &a = AC(p);
+        CHECK(a.count >= 2 && a.frames != A(p).frames);
+        dex_set_pose(p);
+        advance(5);
+        CHECK(shows_one_of(a));  // bit-exact at the same anchor, unscaled: not the placeholder
+        CHECK(!nonblack(0, 0, CHARM_W, Y0 - 2));  // nothing outside the cell
+        shot(coach_shots[k]);
+        const int first = shown();
+        advance(a.frames[0].ms);
+        CHECK(shows_one_of(a) && shown() != first);  // he animates on his own ms
+    }
+    // Every Dex image stays off screen while Coach wears the body.
+    auto shows_dex = [&]() {
+        const int img = shown();
+        if (img < 0) return false;
+        for (int p = 0; p < DEX_POSE_COUNT; p++) {
+            for (int o = 0; o < DEX_OUTFIT_COUNT; o++) {
+                const charm_sprite_anim_t &a = A((dex_pose_t)p, (dex_outfit_t)o);
+                for (int i = 0; i < a.count; i++) {
+                    if (a.frames[i].img == img) return true;
+                }
+            }
+        }
+        return false;
+    };
+    // No Coach frames for done: the gray placeholder, never Dex's nod.
+    dex_set_pose(DEX_POSE_DONE);
+    advance(5);
+    CHECK(AC(DEX_POSE_DONE).count == 0 && A(DEX_POSE_DONE).count > 0);
+    CHECK(shown() == -1 && has_gray() && !shows_dex());
+    shot("coach-placeholder.png");
+    // An outfit borrows Coach's own default frames, not Dex's reading art.
+    dex_set_pose(DEX_POSE_IDLE);
+    dex_set_outfit(DEX_OUTFIT_READING);
+    advance(5);
+    CHECK(shows_one_of(AC(DEX_POSE_IDLE)) && !shows_dex());
+    dex_set_outfit(DEX_OUTFIT_DEFAULT);
+    // Dex's lift exit clip never plays after a switch: Dex lifts, Coach takes over, releases.
+    dex_set_character(DEX_CHARACTER_DEX);
+    dex_set_pose(DEX_POSE_LIFT_BAG);
+    advance(5);
+    CHECK(cell_hash() == fnv_frame(DEX_POSE_LIFT_BAG, 0));
+    dex_set_character(DEX_CHARACTER_COACH);
+    advance(5);
+    CHECK(shown() == -1 && has_gray());  // no Coach lift: placeholder
+    dex_set_pose(DEX_POSE_OFFER_BAG);
+    advance(5);
+    CHECK(shown() == -1 && has_gray() && !shows_dex());  // not Dex's release in-betweens
+    dex_set_pose(DEX_POSE_SPEAKING);
+    advance(5);
+    CHECK(shows_one_of(AC(DEX_POSE_SPEAKING)));
+    // And back to Dex, on his own frames.
+    dex_set_character(DEX_CHARACTER_DEX);
+    dex_set_pose(DEX_POSE_IDLE);
+    advance(5);
+    CHECK(shows_dex());  // bit-exact Dex frames (his art has the placeholder's gray in it)
+    shot("dex-after-coach.png");
 
     printf("dex smooth check: %d failure(s); shots in %s\n", failures, out_dir.c_str());
     return failures ? 1 : 0;

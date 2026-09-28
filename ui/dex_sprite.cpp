@@ -1,5 +1,7 @@
-// Dex, played from the generated frame table in charm_assets_sprites.{h,cpp}
-// (tools/: `uv run charm-assets sprites MANIFEST`). Two formats, whichever the table was generated in:
+// Dex (and Coach), played from the generated frame table in charm_assets_sprites.{h,cpp}
+// (tools/: `uv run charm-assets sprites MANIFEST`). The table is [character][pose][outfit]: every
+// character wears the same body at the same anchor, in the same cell, with the same motion.
+// Two formats, whichever the table was generated in:
 //
 // * Smooth (CHARM_SPRITE_SMOOTH, the real Dex): opaque RGB565 frames pre-composited on #000, one LZ4
 //   block each. The current frame is decoded into ONE reusable buffer (PSRAM on the device) and shown
@@ -10,7 +12,10 @@
 // * Indexed (pixel-art sheets, e.g. the tools/ dummy): each pose/outfit is a list of frames with
 //   per-frame ms, zoomed by an integer scale into the full or mini box.
 //
-// A pose/outfit with no frames falls back to the gray placeholder box labeled with pose + outfit.
+// A pose/outfit with no frames falls back to the gray placeholder box labeled with character, pose
+// and outfit. A character never plays another character's frames: an outfit borrows only its own
+// character's default frames (the generator's fallback), and a character switch cancels the old
+// character's exit clip.
 #include "dex_sprite.h"
 #include "charm_assets_sprites.h"
 #include <stdio.h>
@@ -26,6 +31,8 @@
 
 static_assert(CHARM_SPRITE_POSES == DEX_POSE_COUNT, "charm_assets_sprites: pose table out of date");
 static_assert(CHARM_SPRITE_OUTFITS == DEX_OUTFIT_COUNT, "charm_assets_sprites: outfit table out of date");
+static_assert(CHARM_SPRITE_CHARACTERS == DEX_CHARACTER_COUNT,
+              "charm_assets_sprites: character table out of date");
 
 namespace {
 
@@ -41,6 +48,8 @@ const char *const POSE_NAMES[DEX_POSE_COUNT] = {
 const char *const OUTFIT_NAMES[DEX_OUTFIT_COUNT] = {
     "default", "gameday", "reading", "food", "code", "cat",
 };
+const char *const CHARACTER_NAMES[DEX_CHARACTER_COUNT] = {"dex", "coach"};
+const char *const CHARACTER_LABELS[DEX_CHARACTER_COUNT] = {"DEX", "COACH"};
 
 lv_obj_t *box;
 lv_obj_t *label;
@@ -62,14 +71,21 @@ void relabel() {
     if (!label) return;
     char text[64];
     if (size == DEX_SIZE_FULL) {
-        snprintf(text, sizeof text, "DEX\n%s\n%s", POSE_NAMES[pose], OUTFIT_NAMES[outfit]);
+        snprintf(text, sizeof text, "%s\n%s\n%s", CHARACTER_LABELS[character], POSE_NAMES[pose],
+                 OUTFIT_NAMES[outfit]);
     } else {
-        snprintf(text, sizeof text, "dex\n%s", POSE_NAMES[pose]);
+        snprintf(text, sizeof text, "%s\n%s", CHARACTER_NAMES[character], POSE_NAMES[pose]);
     }
     lv_label_set_text(label, text);
 }
 
 // The gray placeholder box (on) or the sprite (off).
+// The current character's animation for the current pose/outfit; nullptr when it has no frames.
+const charm_sprite_anim_t *current_anim() {
+    const charm_sprite_anim_t *a = &charm_sprite_anims[character][pose][outfit];
+    return a->count > 0 && a->frames ? a : nullptr;
+}
+
 void show_placeholder(bool on) {
     lv_obj_set_style_bg_opa(box, on ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
     lv_obj_set_style_border_width(box, on ? 1 : 0, 0);
@@ -103,6 +119,7 @@ constexpr uint32_t PIXEL_BYTES = (uint32_t)CELL_W * CELL_H * sizeof(lv_color_t);
 constexpr lv_coord_t BREATH_DY[6] = {0, -1, -2, -2, -1, 0};  // rest, inhale x2, hold, exhale x2
 
 lv_color_t *pixels;  // the one decode buffer: PSRAM on the device
+dex_character_t anim_character;  // whose frames `anim` is: exit clips never cross characters
 lv_img_dsc_t shown = {{LV_IMG_CF_TRUE_COLOR, 0, 0, (uint32_t)CELL_W, (uint32_t)CELL_H}, PIXEL_BYTES, nullptr};
 uint16_t shown_img = CHARM_SPRITE_NO_IMG;  // which image `pixels` holds
 lv_coord_t shown_dy;                       // the whole-sprite breathing offset
@@ -249,9 +266,7 @@ void start_clip(Clip kind, const charm_sprite_clip_t *src, uint32_t now) {
 
 void restyle() {
     if (!box) return;
-    const charm_sprite_anim_t *a =
-        character == DEX_CHARACTER_DEX ? &charm_sprite_anims[pose][outfit] : nullptr;
-    const charm_sprite_anim_t *want = a && a->count > 0 && a->frames && pixels ? a : nullptr;
+    const charm_sprite_anim_t *want = pixels ? current_anim() : nullptr;
     show_placeholder(!want);
     relabel();
     if (!want) {
@@ -263,14 +278,17 @@ void restyle() {
     if (anim && want->frames == anim->frames && clip != Clip::Exit) return;
     frame_clock_set = false;  // the next tick starts the new clocks
     blink_phase = 0;
-    // Leaving through a return clip (lift_bag -> offer_bag goes back through the in-betweens).
-    if (anim && anim->exit.frames && anim->exit_to == (uint8_t)pose && clip != Clip::Exit) {
+    // Leaving through a return clip (lift_bag -> offer_bag goes back through the in-betweens), but
+    // only within one character: after a switch, the old character's clip never plays.
+    if (anim && anim_character == character && anim->exit.frames &&
+        anim->exit_to == (uint8_t)pose && clip != Clip::Exit) {
         start_clip(Clip::Exit, &anim->exit, 0);
         after_exit = want;
         return;
     }
     clip = Clip::None;
     anim = want;
+    anim_character = character;
     anim_frame = 0;
     show_image(current_image());
 }
@@ -455,9 +473,7 @@ void show_frame() {
 // The sprite when the current pose/outfit has frames, the gray placeholder when it doesn't.
 void restyle() {
     if (!box) return;
-    const charm_sprite_anim_t *a =
-        character == DEX_CHARACTER_DEX ? &charm_sprite_anims[pose][outfit] : nullptr;
-    const charm_sprite_anim_t *want = a && a->count > 0 && a->frames ? a : nullptr;
+    const charm_sprite_anim_t *want = current_anim();
     show_placeholder(!want);
     if (want != anim) {
         anim = want;
@@ -526,6 +542,7 @@ bool point_area(dex_point_t, lv_area_t *) { return false; }
 void dex_create(lv_obj_t *parent) {
     pose = DEX_POSE_IDLE;
     outfit = DEX_OUTFIT_DEFAULT;
+    character = DEX_CHARACTER_DEX;
     size = DEX_SIZE_FULL;
     hidden = false;
     frame = -1;
@@ -572,13 +589,17 @@ void dex_set_character(dex_character_t c) {
 dex_character_t dex_get_character(void) { return character; }
 
 const char *dex_character_name(dex_character_t c) {
-    return c == DEX_CHARACTER_DEX ? "dex" : c == DEX_CHARACTER_COACH ? "coach" : "?";
+    return c < DEX_CHARACTER_COUNT ? CHARACTER_NAMES[c] : "?";
 }
 
 bool dex_character_from_agent(const char *agent, dex_character_t *out) {
     if (!agent) return false;
-    if (strcmp(agent, "dex") == 0) { *out = DEX_CHARACTER_DEX; return true; }
-    if (strcmp(agent, "coach") == 0) { *out = DEX_CHARACTER_COACH; return true; }
+    for (int i = 0; i < DEX_CHARACTER_COUNT; i++) {
+        if (strcmp(agent, CHARACTER_NAMES[i]) == 0) {
+            *out = (dex_character_t)i;
+            return true;
+        }
+    }
     return false;
 }
 

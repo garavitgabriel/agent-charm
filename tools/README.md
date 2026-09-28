@@ -6,11 +6,13 @@ firmware and the Mac simulator compile unchanged (both builds glob `ui/*.cpp`):
 | Command | Writes |
 |---|---|
 | `uv run charm-assets export-dex` | `ui/assets-src/dex/`: the smooth Dex rendered from the design source, one PNG per frame + `manifest.json` |
-| `uv run charm-assets sprites MANIFEST` | `ui/charm_assets_sprites.{h,cpp}`: the frames + the pose × outfit table (smooth LZ4 RGB565, or indexed pixel art) |
+| `uv run charm-assets export-coach SRC` | `ui/assets-src/coach/`: Coach's frames from the design's renders + his `manifest.json`, then `ui/charm_assets_sprites.*` (see [Coach](#coach-the-second-character)) |
+| `uv run charm-assets dummy-coach` | the same, from the fake orange/navy test card (not Coach) |
+| `uv run charm-assets sprites MANIFEST` | `ui/charm_assets_sprites.{h,cpp}`: the frames + the character × pose × outfit table (smooth LZ4 RGB565, or indexed pixel art) |
 | `uv run charm-assets fonts MANIFEST` | `ui/charm_assets_fonts.{h,cpp}`: `lv_font_t` per face × size, through `lv_font_conv` |
-| `uv run charm-assets check MANIFEST` | nothing: validates, prints the RGB565 palette report, flash sizes and the poses still on the gray placeholder |
-| `uv run charm-assets budget MANIFEST` | nothing: raw / RLE16 / LZ4 bytes per pose vs the 6.25 MiB app partition and the built firmware |
-| `uv run charm-assets strips MANIFEST` | `out/dex-strips/<pose>-<outfit>.png`: every frame side by side, decoded from the generated LZ4, points outlined |
+| `uv run charm-assets check MANIFEST` | nothing: validates, prints the RGB565 palette report, flash sizes and each character's poses still on the gray placeholder |
+| `uv run charm-assets budget MANIFEST` | nothing: raw / RLE16 / LZ4 bytes per pose for each character, an estimate for Coach's full set, vs the 6.25 MiB app partition and the built firmware |
+| `uv run charm-assets strips MANIFEST` | `out/dex-strips/<pose>-<outfit>.png` (and `coach-<pose>-<outfit>.png`): every frame side by side, decoded from the generated LZ4, points outlined |
 | `uv run charm-assets dummy` | `fixtures/dummy/dummy-sheet.png`, the fake test sheet |
 
 Add `--check` to `sprites`/`fonts` to fail (exit 1) when the committed files are stale. Output is
@@ -107,6 +109,86 @@ Every other pose/outfit borrows the default frames (`outfit_fallback`). R4's shh
 exported for review but not compiled, because no `dex_pose_t` plays them. Night reading isn't
 exported. A pose with no frames still falls back to the gray placeholder.
 
+## Coach (the second character)
+
+Coach Beard wears the same body (`dex_character_t`, from protocol `mode.agent`; BRIEF § 11.7
+character-swap contract): **the same 192 × 224 cell, the same hip anchor (76, 161) → screen
+(236, 379), the same motion.** Only the frames differ. The generated table is
+`charm_sprite_anims[character][pose][outfit]`, and the player plays the current character's entry.
+
+**A character never shows another character's frames.** An outfit borrows only that character's
+own default frames. A pose Coach has no frames for is an empty entry, so the player shows the gray
+placeholder (labeled `COACH`), never Dex. A character switch also cancels Dex's lift exit clip.
+
+### Where Coach's source goes, and the one command (batch 14)
+
+Render each Coach frame from the design source as one PNG, and put them all in one folder, named by
+the `dex_sprite.h` pose (and outfit) names:
+
+```
+<pose>-<n>.png             idle-0.png idle-1.png listening-0.png working-0.png speaking-0.png ...
+<pose>-<outfit>-<n>.png    paper-reading-0.png ...
+```
+
+- Each render is either the **192 × 224 cell** or the **full 368 × 448 screen** (the cell is cropped
+  at (160, 218); a pixel outside the cell fails the export, as for Dex).
+- Transparent renders are composited on `#000`, like Dex.
+- Frames are numbered 0..n-1 per pose.
+
+Then run the one command:
+
+```sh
+cd tools
+uv run charm-assets export-coach PATH/TO/RENDERS    # -> ui/assets-src/coach/ + ui/charm_assets_sprites.*
+uv run charm-assets budget ../ui/assets-src/dex/manifest.json
+uv run charm-assets strips ../ui/assets-src/dex/manifest.json   # out/dex-strips/coach-*.png
+```
+
+`export-coach` writes `ui/assets-src/coach/frames/*.png` and Coach's character manifest
+`ui/assets-src/coach/manifest.json` (stale frames are removed), then recompiles
+`ui/charm_assets_sprites.*` from Dex's manifest, which picks Coach up from the folder next to it.
+Coach takes Dex's frame timing, loop point and breathing for each pose, from Dex's manifest. Never
+edit Coach's PNGs or manifest by hand; re-export. Then rebuild the sim and the firmware.
+
+**When the real Coach lands,** `tests/test_characters.py::test_committed_coach_is_the_dummy_test_card`
+must go with the dummy (it pins the committed Coach to `dummy-coach`). Replace it with a check that
+the real set covers the poses the design draws.
+
+### Coach's character manifest
+
+It sits at `ui/assets-src/<character>/manifest.json`, next to Dex's `ui/assets-src/dex/`. It may
+only give what's the character's own; the cell and anchor must equal Dex's, and motion, screen
+anchor, mini crop and compression come from Dex's manifest:
+
+```jsonc
+{
+  "version": 1,
+  "sprites": {
+    "format": "rgb565",
+    "character": "coach",
+    "cell": [192, 224],
+    "anchor": [76, 161],
+    "outfit_fallback": true,             // within Coach only
+    "frames": {"idle-0": {"file": "frames/idle-0.png", "points": {}}},
+    "animations": [{"pose": "idle", "frames": [{"frame": "idle-0", "ms": 250}], "breath": "day"}]
+  }
+}
+```
+
+Frames and animations are exactly Dex's format (blink, sip, exit and points are all allowed). With
+no manifest in `ui/assets-src/coach/`, Coach has no frames and every pose is the gray placeholder.
+Loading a character manifest on its own fails and points you at Dex's.
+
+### The dummy Coach (now)
+
+`uv run charm-assets dummy-coach` renders a navy test card with an orange dashed border and hazard
+stripes, reading **TEST / NOT COACH** and the pose name. It is clearly not Coach. Each pose has its
+own shape: idle's square steps, listening's rings grow, working's bar turns, speaking's mouth opens
+and shuts. It covers idle, listening, working and speaking (2–3 frames each) and goes through
+`export-coach`, so it proves the whole path: export → table → player. Every other Coach pose shows
+the gray placeholder. `player_check/check_dex_smooth.cpp` switches characters on the real
+framebuffer and writes `coach-*.png` shots. The UI starts calling `dex_set_character()` in batch 14.
+
 ## Pixel-art sheets (indexed; the dummy fixture)
 
 The indexed pipeline below still works: `fixtures/dummy/` uses it, and the player picks the mode
@@ -138,6 +220,8 @@ tools/art/
    - poses: `idle listening working attention done speaking asleep offline error`
    - outfits (the protocol `mode` values): `default gameday reading food code cat`
 6. **Timing.** Each frame carries its own `ms` (16–60000). An animation loops.
+7. **Character.** An animation may say `"character": "coach"` (default `"dex"`). The outfit
+   fallback stays within a character.
 
 Then run `uv run charm-assets check art/manifest.json`, followed by `sprites art/manifest.json`
 (and `fonts art/manifest.json` once the face is chosen).
@@ -194,9 +278,10 @@ the header says which. For a 12–16 color pixel-art palette, indexed wins by 2�
 (cell w × h × 3 bytes: 3.8 KB for the dummy, ~9–12 KB for a real cell) and lets `lv_img` zoom it
 with nearest-neighbor scaling. Identical frames are stored once.
 
-The frame table is `charm_sprite_anims[pose][outfit]`, in `dex_pose_t`/`dex_outfit_t` order. Each
-entry is `{frames, count}` with `{img, ms}` per frame. `dex_sprite.cpp` `static_assert`s that the
-table matches the enums.
+The frame table is `charm_sprite_anims[character][pose][outfit]`, in
+`dex_character_t`/`dex_pose_t`/`dex_outfit_t` order. Each entry is `{frames, count}` with `{img, ms}`
+per frame. `dex_sprite.cpp` `static_assert`s that the table matches the enums, and
+`tests/test_manifest.py` / `tests/test_characters.py` check the tools' order against the header.
 
 **Flash estimate.** `check` prints it. A full set is 9 poses × 6 outfits × 4 frames = 216 frames:
 
@@ -239,7 +324,10 @@ them. Both tests are skipped until `build/sim` exists.
   - the lift and its exit clip play as specified;
   - the bag goes from chest to overhead;
   - the reading outfit shows its own frames;
-  - mini works.
+  - mini works;
+  - Coach plays his own frames at the same anchor, shows the gray placeholder (never Dex) for a
+    pose he has no frames for, borrows only his own default outfit, and never runs Dex's exit clip
+    after a switch.
 
 ## Fonts and licenses
 
