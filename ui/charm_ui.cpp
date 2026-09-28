@@ -305,7 +305,7 @@ void card_actions(lv_obj_t *p, const HeldCard &h) {
     if (h.card.actions.empty()) return;
     if (!h.sent_action.empty()) {
         // Never a check before the backend confirms: only state{done} earns it.
-        if (shown_done) label(p, LV_SYMBOL_OK " Confirmed", C_TEXT, PANEL_TEXT_W);
+        if (shown_done) label(p, "Confirmed", C_TEXT, PANEL_TEXT_W);
         else label(p, "Sent \"" + h.sent_action + "\". Waiting for confirmation.", C_DIM, PANEL_TEXT_W);
         return;
     }
