@@ -11,9 +11,11 @@ from typing import Any
 
 import numpy as np
 import pytest
+from charm_notes import FakeNoteStore
 from websockets.asyncio.client import ClientConnection, connect
 
 from charm_server.agent import Message
+from charm_server.books import BookStore
 from charm_server.cards import CardValidator
 from charm_server.config import REPO_DIR, Config
 from charm_server.server import start
@@ -95,7 +97,12 @@ def validator() -> CardValidator:
 
 
 @pytest.fixture
-def deps(config: Config, validator: CardValidator) -> Deps:
+def books_path(tmp_path: Path) -> Path:
+    return tmp_path / ".local" / "books.json"
+
+
+@pytest.fixture
+def deps(config: Config, validator: CardValidator, books_path: Path) -> Deps:
     return Deps(
         config=config,
         stt=FakeSTT(),
@@ -103,6 +110,8 @@ def deps(config: Config, validator: CardValidator) -> Deps:
         tts=FakeTTS(),
         validator=validator,
         speech_lead_s=None,
+        books=BookStore(books_path),
+        notes=FakeNoteStore(),
     )
 
 

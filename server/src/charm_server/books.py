@@ -121,8 +121,7 @@ class BookStore:
         if entry is None:
             entry = BookEntry(title=title, author=author, chapter=chapter)
             self.books[key] = entry
-        else:
-            entry.title = title
+        else:  # keep the title as first heard; transcripts vary in casing
             entry.author = author or entry.author
             entry.chapter = chapter or entry.chapter
         was_reading = self.mode == "reading"

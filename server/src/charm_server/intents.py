@@ -191,7 +191,7 @@ _CHAPTER_WORD = r"(?:chapter|ch|capitulo|cap)"
 _CHAPTER_UPDATE = re.compile(
     r"(?:"
     r"(?:(?:i'm|i am|im|we're|we are) (?:now )?(?:on|in|at|starting|reading|onto|on to)"
-    r"|now (?:on |in |reading )?|moving (?:on )?to|on to|onto|starting|next|update(?: the)?"
+    r"|now(?: on| in| reading)?|moving (?:on )?to|on to|onto|starting|next|update(?: the)?"
     r"|(?:ya |ahora )?(?:voy|estoy|vamos) (?:en|por|leyendo)|paso a|pase a|empiezo|empece"
     r"|ahora|ya en|ahora en|seguimos en|sigo en|vamos con"
     r") )?"
