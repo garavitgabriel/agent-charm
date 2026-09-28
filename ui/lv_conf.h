@@ -9,15 +9,11 @@
 #define LV_DISP_DEF_REFR_PERIOD 25
 #define LV_INDEV_DEF_READ_PERIOD 15
 #define LV_DPI_DEF 160
-#define LV_FONT_MONTSERRAT_12 1
+// The UI sets Instrument Sans (charm_assets_fonts) on every label. Montserrat 14 stays only as
+// LVGL's required default (dex_sprite's placeholder label); no other built-in font is compiled.
 #define LV_FONT_MONTSERRAT_14 1
-#define LV_FONT_MONTSERRAT_16 1
-#define LV_FONT_MONTSERRAT_18 1
-#define LV_FONT_MONTSERRAT_20 1
-#define LV_FONT_MONTSERRAT_24 1
-#define LV_FONT_MONTSERRAT_28 1
-#define LV_FONT_MONTSERRAT_32 1
-#define LV_FONT_DEFAULT &lv_font_montserrat_16
+#define LV_FONT_DEFAULT &lv_font_montserrat_14
+#define LV_USE_SPAN 1  // reading detail: 600 lead-ins inside 400 paragraphs
 #define LV_USE_LOG 0
 #define LV_USE_PERF_MONITOR 0
 #define LV_USE_MEM_MONITOR 0

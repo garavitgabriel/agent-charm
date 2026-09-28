@@ -5,7 +5,8 @@
 #include <string>
 #include <lvgl.h>
 
-// The 11 named surfaces from docs/BRIEF.md § 5. Error shares surface 11 with Offline.
+// The named surfaces: BRIEF § 5 / § 11.3 (the 14 design surfaces) and § 11.8 (reading).
+// Append-only so existing values keep their meaning; money mid-hold is Money with a hold running.
 enum class CharmSurface {
     Home,
     Listening,
@@ -14,11 +15,16 @@ enum class CharmSurface {
     Decision,
     Money,
     Tracker,
-    Edition,
+    Edition,  // the pocket edition
     Job,
     Night,
     Offline,
     Error,
+    Done,           // § 11.3 #8: an order the backend confirmed (never before)
+    NeedsMore,      // § 11.3 #14: a decision with no default: pick one of the choices
+    ReadingHome,    // R1 / R4: book, chapter, speak/quiet state (from the server's echo)
+    ReadingAnswer,  // R2 / R3 / R5: the lead + scrollable detail
+    Saved,          // R6: a save receipt (saved or NOT saved)
 };
 
 const char *charm_ui_surface_name(CharmSurface surface);
@@ -35,7 +41,23 @@ bool charm_ui_debug_listening(void);
 bool charm_ui_debug_night(void);
 float charm_ui_debug_hold_progress(void);     // 0..1 of the on-screen hold action
 
-// The on-screen button for a card action id, or NULL.
+// Design-motion introspection (docs/design/final/motion.md).
+int charm_ui_debug_fuse_px(void);             // listening fuse accent length on the separator, 0..320
+float charm_ui_debug_bag_fill(void);          // the bag fill as drawn (stepped, incl. the drain), 0..1
+std::string charm_ui_debug_hold_label(void);  // "Hold Dex to order" / "Ordering…" ("" off money)
+size_t charm_ui_debug_capsules(void);         // voice-stream capsules in flight
+std::string charm_ui_debug_headline(void);    // the dominant text on screen ("" if none)
+bool charm_ui_debug_transitioning(void);      // old content still exiting or new content entering
+
+// Reading mode.
+std::string charm_ui_debug_speech(void);      // "on" / "off": the state shown (server echo only)
+int charm_ui_debug_read_step(void);           // detail text size: 0 = 18, 1 = 22, 2 = 26 px
+int charm_ui_debug_scroll(void);              // reading column offset, px
+int charm_ui_debug_scroll_max(void);          // largest offset (0 = the column fits)
+// UI-only buttons: "speech", "read_more", "larger", "smaller", "edition_next", "dismiss".
+lv_obj_t *charm_ui_debug_ui_button(const char *id);
+
+// The on-screen button for a card action id, or NULL. On money, "confirm" is Dex's bag.
 lv_obj_t *charm_ui_debug_action_button(const char *action_id);
 // The working surface's cancel button, or NULL.
 lv_obj_t *charm_ui_debug_cancel_button(void);

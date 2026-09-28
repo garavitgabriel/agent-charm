@@ -232,7 +232,9 @@ static void test_every_example_card() {
         CHECK(charm_ui_debug_surface() == x.surface);
         CHECK_EQ(charm_ui_debug_card_id(), std::string(x.id));
         CHECK_EQ(displayed_count(x.id), 1);
-        CHECK(dex_get_size() == DEX_SIZE_MINI);  // Dex never disappears: mini in the corner
+        // Dex never disappears. Design § 11.6 (and dex_sprite.h): full body at the one anchor on
+        // every surface, never the old corner mini.
+        CHECK(dex_get_size() == DEX_SIZE_FULL);
         run(200);
         CHECK_EQ(displayed_count(x.id), 1);  // one receipt per version, not per frame
     }
