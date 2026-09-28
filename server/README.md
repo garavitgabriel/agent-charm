@@ -2,18 +2,26 @@
 
 The server side of [`docs/PROTOCOL.md`](../docs/PROTOCOL.md). A device (the ESP32 charm, the Mac
 simulator, or `charm-client`) holds a WebSocket at `ws://<host>:8765/charm`. The server hears it
-(Whisper), asks Dex (Hermes, read-and-converse only), and answers with a card plus a spoken reply
+(Whisper), asks Dex (any OpenAI-compatible model, or a Hermes agent; read-and-converse only), and answers with a card plus a spoken reply
 (Edge TTS). It also serves the pocket edition and pending cards, and handles card buttons.
 
 ## Run it
 
-Needs `uv`, `ffmpeg` and SSH access to the `hermes` alias (the same one Margin uses).
+Needs `uv`, `ffmpeg` and an agent backend: any OpenAI-compatible chat-completions endpoint
+(OpenAI, Anthropic's OpenAI-compatible endpoint, Ollama, LM Studio, vLLM, OpenRouter...) or a
+[Hermes](https://github.com/NousResearch/hermes-agent) agent container over SSH.
 
 ```sh
 cd server
-cp .env.example .env          # then set CHARM_TOKEN (the file is gitignored)
+cp .env.example .env          # then set CHARM_TOKEN and the agent (the file is gitignored)
 uv sync
 uv run charm-server           # loads Whisper, then listens on ws://127.0.0.1:8765/charm
+```
+
+A local model, no API key (with [Ollama](https://ollama.com) running and a model pulled):
+
+```sh
+CHARM_AGENT_BASE_URL=http://127.0.0.1:11434/v1 CHARM_AGENT_MODEL=qwen3:14b uv run charm-server
 ```
 
 In another terminal, be the device:
@@ -45,17 +53,24 @@ The real environment wins over `server/.env`. See [`.env.example`](.env.example)
 |---|---|---|
 | `CHARM_TOKEN` | — (required) | Shared secret the device sends in `hello`. A wrong or missing token gets `error{auth}` and a 4401 close |
 | `CHARM_HOST` / `CHARM_PORT` | `127.0.0.1` / `8765` | Where the server listens and where the client connects |
-| `HERMES_SSH_ALIAS` | `hermes` | SSH host alias for the VPS |
-| `HERMES_CONTAINER` | `hermes-agent` | The Hermes container `docker exec` targets |
+| `CHARM_AGENT` | `openai` | The backend: `openai` (any OpenAI-compatible endpoint) or `hermes` |
+| `CHARM_AGENT_BASE_URL` | `https://api.openai.com/v1` (or `OPENAI_BASE_URL`) | `openai`: the endpoint; `/chat/completions` is appended |
+| `CHARM_AGENT_API_KEY` | `OPENAI_API_KEY`, else none | `openai`: sent as `Authorization: Bearer …`; empty for local servers |
+| `CHARM_AGENT_MODEL` | — (required for `openai`) | `openai`: the model name |
+| `CHARM_OWNER_NAME` | — | Your first name, for the prompts ("You are Dex, Sam's agent"). Empty: neutral wording |
+| `CHARM_MAIN_CHAT` | `your main chat` | Where actions can happen instead, named in the read-only rule (e.g. `Telegram`) |
+| `HERMES_SSH_ALIAS` | `hermes` | `hermes`: SSH host alias for the Hermes host (`local` = this host, no SSH) |
+| `HERMES_CONTAINER` | `hermes-agent` | `hermes`: the container `docker exec` targets |
 | `HERMES_CHANNEL` | `1` | `1`: one persistent channel to Dex, answers streamed. `0`: the old `ssh` per question |
 | `CHARM_CARDS_DIR` | `../contract/examples` | `*.json` cards for `request{edition\|pending}`. Point it at the feeds output later |
 | `CHARM_SCHEMA` | `../contract/card.schema.json` | Every card is validated against it before sending |
 | `CHARM_ACTION_LOG` | `.local/actions.jsonl` | Local log of card actions (gitignored) |
-| `CHARM_TZ` | `America/Chicago` | `welcome.tz` and card timestamps |
-| `CHARM_VOICE_EN` / `CHARM_VOICE_ES` | `en-US-AndrewNeural` / `es-CO-GonzaloNeural` | Edge voices by detected language (anything else falls back to English) |
+| `CHARM_TZ` | this machine's zone, else `UTC` | `welcome.tz` and card timestamps |
+| `CHARM_VOICE_EN` / `CHARM_VOICE_ES` | `en-US-AndrewNeural` / `es-ES-AlvaroNeural` | Edge voices by detected language (anything else falls back to English) |
 | `CHARM_WHISPER_MODEL` | `base` | faster-whisper model |
 | `CHARM_BOOKS` | `.local/books.json` | The reading session: current book, chapter, the last 8 Q&A per book, the speech toggle (gitignored) |
-| `CHARM_NOTES` | `osapi` | Where "save this" goes. `osapi`: the OS knowledge service (`charm_notes.osapi.OsApiStore`, inbox only). `fake`: in memory, for tests and live checks. `off`: saving disabled |
+| `CHARM_NOTES` | `file` | Where "save this" goes. `file`: one new Markdown file per note in `CHARM_NOTES_DIR` (default `.local/notes`). `osapi`: an HTTP knowledge service (`charm_notes.osapi.OsApiStore`, inbox only). `fake`: in memory, for tests and live checks. `off`: saving disabled |
+| `COACH_ENABLED` | `0` | The optional second agent, Coach Beard ([`docs/COACH.md`](../docs/COACH.md)). `COACH_MODEL`, `COACH_ENV_PATH`, `COACH_PORT`, `COACH_LEDGER_PATH`: see `.env.example` |
 
 Relative paths are resolved from `server/`.
 
@@ -67,8 +82,10 @@ device ──ws /charm──▶ server.py      auth (hello + token → welcome, 
                         ▼
                       session.py     one per connection: talk job, cancel, busy, requests, actions
                         │  ├─ stt.py     STT protocol · WhisperSTT (base, int8, CPU, VAD, detects language)
+                        │  ├─ openai_compat.py  OpenAICompatAgent: any /chat/completions endpoint, streamed (SSE)
                         │  ├─ hermes.py  HermesChannel: one long-lived worker in the container, streamed answers
-                        │  ├─ agent.py   Agent / StreamingAgent protocols · HermesAgent (ssh per question)
+                        │  ├─ agent.py   Agent / StreamingAgent protocols · the persona · HermesAgent (ssh per question)
+                        │  ├─ coach.py   Coach Beard, the optional second agent: persona, calls, walk-away jobs
                         │  ├─ tts.py     TTS protocol · EdgeTTS (MP3 → ffmpeg → 16 kHz s16le, streamed)
                         │  ├─ cards.py   schema validation, edition/pending loading, reply → say + card
                         │  ├─ intents.py rule-based EN/ES intents: enter/leave reading, chapter, save, speech
@@ -140,9 +157,20 @@ Invalid cards are logged and never sent.
 - **Other kinds** (job, tracker, …): logged, and the card is replaced by a "Noted, v0 doesn't
   forward this yet" notice.
 
-### Dex (Hermes): read and converse only
+### The agent: read and converse only
 
-**The persistent channel (`hermes.py`, the default).**
+**Any OpenAI-compatible endpoint (`openai_compat.py`, `CHARM_AGENT=openai`, the default).** One
+`POST {CHARM_AGENT_BASE_URL}/chat/completions` per question with `stream: true`; server-sent
+`delta`s feed the speech as they arrive, and an endpoint that answers with one JSON body works too.
+`<think>…</think>` blocks from local reasoning models are dropped before anything is spoken or
+shown. HTTP errors, timeouts (120 s) and refused connections become `agent_error` /
+`agent_timeout` with a readable reason. The persona (below) is the only guard: a plain model has
+no tools, so "read, don't act" is automatic; an agent endpoint with tools should enforce it too.
+
+**Hermes (`CHARM_AGENT=hermes`).** For a [Hermes](https://github.com/NousResearch/hermes-agent) agent
+in a Docker container, reached over SSH without exposing its API.
+
+**The persistent channel (`hermes.py`, the Hermes default).**
 - **One worker.** At server start, `HermesChannel` runs one worker in the container over the usual
   path: `ssh hermes docker exec -i <container> /opt/hermes/.venv/bin/python -u -c <worker>`. It
   warms up in parallel with Whisper, and every question reuses it.
@@ -166,17 +194,17 @@ Its failure handling:
 - **Cancel.** A cancelled request tells the worker to stop reading that answer. Late lines for it
   are dropped.
 
-**Per question (`HERMES_CHANNEL=0`).** `HermesAgent` follows Margin's `bridge.py` (provenance in `agent.py`): `ssh hermes docker exec -i
+**Per question (`HERMES_CHANNEL=0`).** `HermesAgent` (provenance in `agent.py`): `ssh hermes docker exec -i
 <container> /opt/hermes/.venv/bin/python -` runs a small script inside the container. That script
 reads `API_SERVER_KEY` from the container's `/opt/data/.env` and POSTs to the container-local
-`http://127.0.0.1:8642/v1/chat/completions`. The key never leaves the VPS. The charm persona asks for
+`http://127.0.0.1:8642/v1/chat/completions`. The key never leaves the host. The charm persona asks for
 conversation only (no tools, actions, messages, orders or memories), plain text, at most 60 words,
 and a reply in the question's language. A system note also names the detected language. Nothing
 here changes Hermes config, crons, skills or the charter.
 
 ## Reading mode
 
-Margin's reading companion is a mode of the charm ([`PROTOCOL.md` § Reading mode](../docs/PROTOCOL.md)).
+The reading companion is a mode of the charm ([`PROTOCOL.md` § Reading mode](../docs/PROTOCOL.md)).
 
 **Intents are rules, not a model call** (`intents.py`, EN + ES). They're checked on the final
 transcript before anything goes to Dex, and only whole-utterance commands count; anything else is a
@@ -199,7 +227,7 @@ It keeps the current book and chapter, the last 8 Q&A per book, and the speech t
 survives reconnects and restarts, and on connect the server re-sends `mode` + `setting{speech}`
 when reading is active. Switching books switches context: each book has its own chapter and turns.
 
-**Reading answers** use Margin's rules (`reading.py`): no spoilers past the chapter, no invented
+**Reading answers** follow the reading rules (`reading.py`): no spoilers past the chapter, no invented
 quotes or page numbers, ask for the passage, and keep the author's claim, interpretation and
 background apart. The prompt carries this book's turns, not the connection's. Dex answers with a
 lead, a blank line, then the detail. The card gets `body` (the lead, ≤ 60 words; a longer lead
