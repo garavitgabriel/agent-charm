@@ -5,8 +5,8 @@ One file per server. It remembers which book the owner is reading, the chapter t
 survives reconnects and server restarts. Switching books switches the context: each book keeps
 its own chapter and turns.
 
-The file holds the owner's own questions about their books, so it lives under `.local/` (gitignored),
-never in the repo.
+The file holds the owner's own questions about their books, so it lives under `.local/`
+(gitignored), never in the repo.
 """
 
 from __future__ import annotations

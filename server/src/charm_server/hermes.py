@@ -187,7 +187,7 @@ def worker_bootstrap(env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: s
     return f"import base64;exec(base64.b64decode('{encoded}'))"
 
 
-LOCAL = "local"  # HERMES_SSH_ALIAS=local: the server runs on the Hermes host itself (e.g. a VPS deploy)
+LOCAL = "local"  # HERMES_SSH_ALIAS=local: the server runs on the Hermes host itself
 
 
 def ssh_command(
