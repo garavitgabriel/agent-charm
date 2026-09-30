@@ -160,10 +160,10 @@ def de2000(c1, c2):
 
 
 CANDIDATES = [
-    ("ref", "A · reference orange #E8742C", dict(jacket="ref")),
-    ("burnt", "B · burnt #C8551E (chosen)", dict(jacket="burnt")),
-    ("rust", "C · rust #A84E2E", dict(jacket="rust")),
-    ("navy", "D · navy jacket, burnt trim", dict(jacket="burnt", navy_led=True)),
+    ("ref", "A · reference orange #E8742C", dict(jacket="ref", navy_led=False)),
+    ("burnt", "B · burnt #C8551E (shipped 09-28, replaced)", dict(jacket="burnt", navy_led=False)),
+    ("rust", "C · rust #A84E2E", dict(jacket="rust", navy_led=False)),
+    ("navy", "D · navy jacket, burnt trim (chosen)", dict(jacket="burnt", navy_led=True)),
 ]
 
 

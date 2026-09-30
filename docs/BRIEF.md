@@ -362,15 +362,18 @@ everything). Coach is the second character on the same body, under the § 11.7 c
 layout, motion, separator, anchor and the gold accent don't change. There's no name label: the
 character is the cue.
 
-- **Look:** an orange pom beanie with a navy cuff, a black headset with a boom mic, a full brown
-  beard, and a steel whistle on a cord. An orange jacket with navy collar/hood, hem and sleeve
-  bands, over a white/grey long sleeve. Brown trousers and dark shoes. His props are a spiral
-  calendar with one date circled and a tablet showing a play ("watching film"). Night is
+- **Look:** a burnt-orange pom beanie with a ribbed cuff, a black headset with a boom mic, a full
+  brown beard, and a steel whistle on a cord. A **navy jacket** with burnt-orange collar/hood, hem
+  and sleeve bands, over a white/grey long sleeve. Brown trousers and dark shoes. His props are a
+  spiral calendar with one date circled and a tablet showing a play ("watching film"). Night is
   `dex.dim_pal`.
-- **Accent (rule 5):** the jacket is burnt orange **`#E07A45 / #C8551E / #9A3F14`**, chosen from
-  four candidates (`accent-compare.png`). It's ΔE00 34.6 from the gold and 30 L* darker; the
-  reference orange `#E8742C` (ΔE 26) collided. The circled date uses his orange, never gold.
-  Rust `#A84E2E` is the device fallback.
+- **Accent (rule 5):** option **D, a navy jacket (`#44557F / #2B3A60 / #1C2744`) with burnt-orange
+  trim (`#E07A45 / #C8551E / #9A3F14`)**, the owner's pick at the fixed point on 2026-09-29, from
+  four candidates (`accent-compare.png`). It replaced the burnt-orange jacket that shipped on
+  2026-09-28 without the pick. The big mass beside the gold pill is navy, and the orange stays as
+  identity on the beanie and the trim (the beanie is ΔE00 34.6 from the gold and 30 L* darker). The
+  reference orange `#E8742C` (ΔE 26) collided. The circled date uses his orange, never gold. The
+  switch is one flag: `coach.NAVY_LED`.
 - **Poses** (the `dex_sprite.h` names; 20 frames in `coach/frames/`, `<pose>-<n>.png`, 192×224
   cells on `#000`, hip (236,379), scale 0.62):
   - idle 3 (the whistle swings);

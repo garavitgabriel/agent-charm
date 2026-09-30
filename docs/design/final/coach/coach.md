@@ -19,9 +19,9 @@ idiom. The pixel reference (`docs/coach/coach-reference.jpg`) is used for identi
 
 - `src/coach.py` imports `dex.py` read-only and reuses its primitives unchanged: `hand`, `leg`,
   `shoe`, `ell/path/line/g`, the face outline and eye/mouth vocabulary, and `dim_pal` for night.
-  New parts: the pom beanie (a navy ribbed cuff and a tag), the headset (the band over the beanie,
+  New parts: the pom beanie (a ribbed trim cuff and a tag), the headset (the band over the beanie,
   ear cups, a boom mic and an LED), the full beard with a mustache, the whistle on a cord, a jacket
-  torso (navy collar/hood, hem and zip), a two-tone arm (the jacket upper arm with a navy band over
+  torso (trim-coloured collar/hood and hem, a zip), a two-tone arm (the jacket upper arm with a trim band over
   a grey long-sleeve forearm), and the props (a spiral calendar with a circled date, a tablet
   showing a play diagram, a thumbs-up hand).
 - `coach.figure()` keeps Dex's keyword schema (`dex.DEFAULT`), so a `dex_export`-style capture can
@@ -39,8 +39,8 @@ idiom. The pixel reference (`docs/coach/coach-reference.jpg`) is used for identi
 
 | Material | Highlight | Base | Side plane | Note |
 |---|---|---|---|---|
-| Jacket, beanie, calendar header (**burnt orange**) | `#E07A45` | **`#C8551E`** | `#9A3F14` | Chosen by the accent test below |
-| Navy trim (cuff, collar/hood, hem, sleeve band) | `#44557F` | `#2B3A60` | `#1C2744` | |
+| Jacket body (**navy**) | `#44557F` | **`#2B3A60`** | `#1C2744` | Option D, the owner's pick 2026-09-29 (below) |
+| Burnt-orange trim: beanie, cuff, collar/hood, hem, sleeve band, calendar header | `#E07A45` | `#C8551E` | `#9A3F14` | The orange is the trim, not the body |
 | Long sleeve (forearms) | `#E6E9EC` | `#C3C9CF` | `#949CA5` | White/grey |
 | Beard | `#8E5A38` | `#6A4029` | `#4A2A1B` | Brows `#4A2A1B` |
 | Skin | `#F6CBA4` | `#E4A67C` | `#C4825C` | A shade ruddier than Dex |
@@ -59,18 +59,20 @@ four jackets. CIEDE2000 against the gold `#F2C14E`:
 |---|---|---|---|---|
 | Dex teal (the baseline) | `#1F97A6` | 45.4 | 43.0 | 57.2 |
 | A: the reference orange | `#E8742C` | 26.1 | 21.1 | 61.5 |
-| **B: burnt (chosen)** | **`#C8551E`** | **34.6** | **28.0** | **50.5** |
+| B: burnt (shipped 09-28, replaced) | `#C8551E` | 34.6 | 28.0 | 50.5 |
 | C: rust | `#A84E2E` | 39.7 | 32.7 | 44.2 |
-| D: navy jacket, burnt trim | (beanie `#C8551E`) | 34.6 | 28.0 | 50.5 |
+| **D: navy jacket, burnt trim (chosen)** | **`#2B3A60`** body; beanie/trim `#C8551E` | **34.6** (the largest orange left: the beanie) | **28.0** | **50.5** |
 
 - **A fails.** At 26 ΔE, the bright orange and the gold read as one warm family, so the pill stops
   being the only "hot" thing on the screen.
-- **B is chosen.** It sits 30 L* below the gold, and its hue moves toward red. On the render the
-  gold pill and text are clearly the brightest, lightest warm element, and he still reads as
-  "orange coach".
-- C clears the gold further but goes muddy brown next to the beard and trousers. It's the
-  fallback if the device panel makes B read too close.
-- D keeps the most distance on the body but loses the reference's identity (orange jacket).
+- **B shipped first, without the fixed point.** On 2026-09-28 a parallel session picked B from
+  this table and merged it (with batch 14 on top). It sits 30 L* below the gold and leans red.
+- **D is chosen: the owner's pick at the fixed point, 2026-09-29.** The owner was shown all four on this
+  screen and picked D over the recommended C. The large area next to the gold pill is now navy, so
+  the pill is the only hot mass on the screen. The orange survives as identity where the eye
+  lands: the beanie, the collar, the sleeve bands and the hem. Main was re-skinned the same day
+  (`coach.NAVY_LED = True`).
+- C clears the gold further but goes muddy brown next to the beard and trousers.
 - The gold itself is unchanged.
 
 ## Poses and frames (`frames/`, export-coach input)
@@ -146,6 +148,21 @@ Each shot can take up to about 45 s.
 - **Pose reuse across characters:** C1 reuses the Working slot's layout and C2 reuses the Decision
   layout, as COACH.md intends. Each Coach screen still has its own Coach pose.
 - **No name label.** The character is the identity cue.
+
+## Blind critic on `c2-call.png` (Sonnet, checklist mode, 2026-09-29, after the D re-skin)
+
+The critic saw only the image. Its checklist, checked against the source:
+- **PASS:** B1, B3, B7 and B9.
+- **B2 FAIL (feet cropped) is false.** The art ends at y = 441, and rows 442–447 are black
+  (pixel-checked).
+- **B4 FAIL (three gold actions) and B6 FAIL (the "1px rule") judge the locked § 11 system,** not
+  Coach. The separator is the 3 px token, and three gold actions is Dex's Decision layout. Out of
+  scope for a character swap.
+- **B8 PARTIAL:** the gold pill is the one bright patch, as on every Decision screen.
+- **B5 FAIL is the live finding.** A blind eye still groups the burnt-orange beanie and trim with
+  the gold. D already moved the large mass to navy. The fallback if the device panel confirms it
+  is C's rust on the trim (`make_pal(jacket="rust")`, ΔE 39.7). This is the owner's call, not a
+  silent change.
 
 ## Open / couldn't do
 

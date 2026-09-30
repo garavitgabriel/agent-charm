@@ -39,10 +39,12 @@ JACKETS = {
     "rust":  ("#C0694A", "#A84E2E", "#7E381F"),   # rust: far below the gold in value
 }
 NAVY = ("#44557F", "#2B3A60", "#1C2744")
-JACKET_PICK = "burnt"  # chosen 2026-09-28 by the accent test (coach.md § Accent); rust is the fallback
+JACKET_PICK = "burnt"  # the orange: beanie, trim, circled date
+NAVY_LED = True        # D: navy jacket body, burnt trim. the owner's pick at the fixed point, 2026-09-29
+                      # (it replaced the burnt-jacket skin that shipped 2026-09-28; coach.md § Accent)
 
 
-def make_pal(jacket=JACKET_PICK, navy_led=False):
+def make_pal(jacket=JACKET_PICK, navy_led=NAVY_LED):
     """Coach's day palette. navy_led swaps the jacket body to navy and keeps orange as trim."""
     j = JACKETS[jacket]
     body, trim = (NAVY, j) if navy_led else (j, NAVY)
