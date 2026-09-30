@@ -6,6 +6,13 @@
 #define LV_COLOR_DEPTH 16
 #define LV_COLOR_16_SWAP 0
 #define LV_MEM_SIZE (96U * 1024U)
+#ifdef ESP_PLATFORM
+// Put LVGL's pool in PSRAM. As a static array it took 96 KB of internal RAM, and this core's
+// mbedTLS allocates only from internal RAM: with ~25 KB left, the wss:// socket dropped reads and
+// failed writes at random. The simulator keeps the static pool.
+#define LV_MEM_POOL_INCLUDE <esp32-hal-psram.h>
+#define LV_MEM_POOL_ALLOC ps_malloc
+#endif
 #define LV_DISP_DEF_REFR_PERIOD 25
 #define LV_INDEV_DEF_READ_PERIOD 15
 #define LV_DPI_DEF 160

@@ -38,7 +38,13 @@ std::atomic<bool> is_online{false};
 charm::Backoff backoff;
 charm::Keepalive keepalive;
 unsigned long seen_fail = 0;
-uint32_t hello_at = 0;   // when hello went out on the current socket; 0 once welcomed or down
+// Mic frames stay well under PROTOCOL's 4096 cap so each TLS record fits in one ~1.1 KB packet.
+// lwIP does no path-MTU discovery: on a network that drops packets over ~1280 bytes (seen through a
+// home router's tunnel), 4096-byte frames went out as full 1476-byte segments, were never ACKed, and
+// the socket died on its 5 s send timeout. Small packets pass everywhere; 1024 B is 32 ms of audio.
+constexpr size_t kMicFrameBytes = 1024;
+bool awaiting_welcome = false;  // hello sent on the current socket, welcome not yet seen
+uint32_t hello_at = 0;          // when that hello went out (valid only while awaiting_welcome)
 constexpr uint32_t kWelcomeTimeoutMs = 10000;
 bool streaming = false;  // between audio_start and audio_end (task-local)
 
@@ -74,7 +80,7 @@ void send_frame(const char *json, size_t len) {
 
 void go_offline() {
     streaming = false;
-    hello_at = 0;
+    awaiting_welcome = false;
     audio::speech_stop();
     if (is_online.exchange(false)) push_notice(Inbound::Offline);
 }
@@ -86,7 +92,10 @@ void on_event(WStype_t type, uint8_t *payload, size_t length) {
         char hello[512];
         size_t n = charm::frame_hello(hello, sizeof hello, CHARM_DEVICE_ID, CHARM_FW_VERSION, CHARM_TOKEN, caps, 3);
         send_frame(hello, n);
-        hello_at = millis() | 1;
+        // A flag, not a "never zero" timestamp: millis() | 1 could land 1 ms after the task's `now`,
+        // and the unsigned `now - hello_at` then wrapped, dropping healthy sockets at once.
+        hello_at = millis();
+        awaiting_welcome = true;
         keepalive.reset(millis());
         break;
     }
@@ -94,7 +103,7 @@ void on_event(WStype_t type, uint8_t *payload, size_t length) {
         const char *text = reinterpret_cast<const char *>(payload);
         charm::Peek p = charm::peek_message(text, length);
         if (p.type == charm::MsgType::Welcome && !is_online.exchange(true)) {
-            hello_at = 0;
+            awaiting_welcome = false;
             backoff.reset();
             keepalive.reset(millis());
             push_notice(Inbound::Online);  // the UI hears "connected" before the welcome itself
@@ -121,7 +130,7 @@ void on_event(WStype_t type, uint8_t *payload, size_t length) {
 }
 
 void pump_mic(bool flush_all) {
-    static uint8_t frame[charm::kMaxBinaryFrame];
+    static uint8_t frame[kMicFrameBytes];
     for (;;) {
         size_t avail = audio::mic_available();
         if (avail < sizeof frame && !(flush_all && avail >= 2)) return;
@@ -182,9 +191,9 @@ void task(void *) {
         }
 
         uint32_t now = millis();
-        if (hello_at && now - hello_at > kWelcomeTimeoutMs) {
+        if (awaiting_welcome && static_cast<int32_t>(now - hello_at) > static_cast<int32_t>(kWelcomeTimeoutMs)) {
             Serial.println("[net] no welcome within 10 s, reconnecting");
-            hello_at = 0;
+            awaiting_welcome = false;
             ws.disconnect();
         }
         if (is_online.load()) {
