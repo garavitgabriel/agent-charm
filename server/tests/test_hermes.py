@@ -23,7 +23,13 @@ from typing import Any
 import pytest
 
 from charm_server.agent import AgentError, AgentTimeout
-from charm_server.hermes import WORKER, HermesChannel, ssh_command, worker_bootstrap
+from charm_server.hermes import (
+    WORKER,
+    HermesChannel,
+    ssh_command,
+    worker_bootstrap,
+    worker_script,
+)
 
 KEY = "test-api-key"
 
@@ -377,6 +383,12 @@ def test_worker_reads_the_key_inside_the_container_and_calls_the_local_api() -> 
     assert "'http://127.0.0.1:8642/v1/chat/completions'" in WORKER
     assert "'stream': True" in WORKER
     assert "os._exit(0)" in WORKER  # it ends with its stdin: no daemon, no service
+
+
+def test_coach_on_the_multiplexed_gateway_uses_his_profile_path() -> None:
+    script = worker_script("/opt/data/profiles/coach/.env", 8642, "Coach", "p/coach/v1/")
+    assert "'http://127.0.0.1:8642/p/coach/v1/chat/completions'" in script
+    assert "'/opt/data/profiles/coach/.env'" in script
 
 
 def test_local_command_skips_ssh_for_the_vps_deploy() -> None:

@@ -182,6 +182,7 @@ def make_agents(config: Config) -> Agents:
             name="Coach",
             env_file=config.coach_env_path,
             port=config.coach_port,
+            api_path=config.coach_api_path,
         )
         agents.coach = coach_channel
         agents.warmups.append(coach_channel.start)

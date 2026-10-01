@@ -168,9 +168,16 @@ os._exit(0)  # stdin closed: the channel is gone, so is the worker (daemon threa
 """
 
 
-def worker_script(env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: str = "Dex") -> str:
-    """The worker for one agent: which env file holds its key, which local port serves it."""
-    url = f"http://127.0.0.1:{int(port)}/v1/chat/completions"
+def worker_script(
+    env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: str = "Dex", api_path: str = "/v1"
+) -> str:
+    """The worker for one agent: which env file holds its key, which local port and path serve it.
+
+    `api_path` is "/v1" for a profile with its own API port. Hermes v2026.9.24+ serves every
+    profile from the default gateway's port under "/p/<profile>/v1" (the multiplexer).
+    """
+    path = "/" + api_path.strip("/")
+    url = f"http://127.0.0.1:{int(port)}{path}/chat/completions"
     return (
         WORKER_TEMPLATE.replace("__ENV_FILE__", repr(str(env_file)))
         .replace("__URL__", repr(url))
@@ -181,9 +188,11 @@ def worker_script(env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: str 
 WORKER = worker_script()  # Dex's worker
 
 
-def worker_bootstrap(env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: str = "Dex") -> str:
+def worker_bootstrap(
+    env_file: str = DEX_ENV_FILE, port: int = DEX_PORT, name: str = "Dex", api_path: str = "/v1"
+) -> str:
     """A `python -c` argument that runs the worker; base64 keeps the remote shell out of quoting."""
-    encoded = base64.b64encode(worker_script(env_file, port, name).encode()).decode()
+    encoded = base64.b64encode(worker_script(env_file, port, name, api_path).encode()).decode()
     return f"import base64;exec(base64.b64decode('{encoded}'))"
 
 
@@ -196,8 +205,9 @@ def ssh_command(
     env_file: str = DEX_ENV_FILE,
     port: int = DEX_PORT,
     name: str = "Dex",
+    api_path: str = "/v1",
 ) -> list[str]:
-    bootstrap = worker_bootstrap(env_file, port, name)
+    bootstrap = worker_bootstrap(env_file, port, name, api_path)
     worker = ["/opt/hermes/.venv/bin/python", "-u", "-c", bootstrap]
     if ssh_alias == LOCAL:
         # Same container-local API and in-container key read; only the SSH hop is gone.
@@ -249,10 +259,13 @@ class HermesChannel:
         name: str = "Dex",
         env_file: str = DEX_ENV_FILE,
         port: int = DEX_PORT,
+        api_path: str = "/v1",
     ) -> None:
         self.name = name
         self.timeout = timeout
-        self.command = list(command or ssh_command(ssh_alias, container, env_file, port, name))
+        self.command = list(
+            command or ssh_command(ssh_alias, container, env_file, port, name, api_path)
+        )
         self.env = env
         self.ready_timeout = ready_timeout
         self.backoff = tuple(backoff)

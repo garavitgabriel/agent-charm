@@ -98,3 +98,10 @@ def test_env_example_lists_every_variable() -> None:
         "HERMES_CONTAINER",
     ):
         assert f"{key}=" in text
+
+
+def test_coach_api_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("COACH_API_PATH", raising=False)
+    assert Config.from_env(None).coach_api_path == "/v1"
+    monkeypatch.setenv("COACH_API_PATH", "/p/coach/v1")
+    assert Config.from_env(None).coach_api_path == "/p/coach/v1"

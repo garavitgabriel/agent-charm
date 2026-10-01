@@ -102,6 +102,7 @@ class Config:
     coach_model: str = ""  # openai backend: his model ("" = the same as Dex's)
     coach_env_path: str = "/opt/data/profiles/coach/.env"
     coach_port: int = 8644
+    coach_api_path: str = "/v1"  # Hermes v2026.9.24+ multiplexer: port 8642, "/p/coach/v1"
     coach_ledger_path: str = ""  # hermes backend: his decision ledger ("" = no fast path)
     coach_voice_en: str = "en-US-ChristopherNeural"
     coach_voice_es: str = "es-MX-JorgeNeural"
@@ -154,6 +155,7 @@ class Config:
             coach_model=env.get("COACH_MODEL", "").strip(),
             coach_env_path=env.get("COACH_ENV_PATH") or "/opt/data/profiles/coach/.env",
             coach_port=int(env.get("COACH_PORT") or "8644"),
+            coach_api_path=env.get("COACH_API_PATH", "").strip() or "/v1",
             coach_ledger_path=env.get("COACH_LEDGER_PATH", "").strip(),
             coach_voice_en=env.get("CHARM_VOICE_COACH_EN") or "en-US-ChristopherNeural",
             coach_voice_es=env.get("CHARM_VOICE_COACH_ES") or "es-MX-JorgeNeural",
