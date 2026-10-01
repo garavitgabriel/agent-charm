@@ -30,7 +30,7 @@ from .notestore import make_store
 from .openai_compat import OpenAICompatAgent
 from .session import Deps, Session
 from .stt import WhisperSTT
-from .tts import EdgeTTS
+from .tts import TTS, EdgeTTS, ElevenLabsTTS, FallbackTTS
 
 log = logging.getLogger("charm_server")
 
@@ -193,6 +193,16 @@ def make_agents(config: Config) -> Agents:
     return agents
 
 
+def make_tts(config: Config, edge_en: str, edge_es: str, voice_en: str, voice_es: str) -> TTS:
+    """One character's voice: ElevenLabs in front of Edge when there's a key and a voice id for
+    this character, else Edge alone."""
+    edge = EdgeTTS(edge_en, edge_es)
+    if not (config.elevenlabs_api_key and voice_en):
+        return edge
+    eleven = ElevenLabsTTS(config.elevenlabs_api_key, voice_en, voice_es, config.elevenlabs_model)
+    return FallbackTTS(eleven, edge)
+
+
 async def run(config: Config, warm: bool) -> None:
     stt = WhisperSTT(config.whisper_model)
     agents = make_agents(config)
@@ -209,12 +219,24 @@ async def run(config: Config, warm: bool) -> None:
         config=config,
         stt=stt,
         agent=agents.dex,
-        tts=EdgeTTS(config.voice_en, config.voice_es),
+        tts=make_tts(
+            config,
+            config.voice_en,
+            config.voice_es,
+            config.elevenlabs_voice_en,
+            config.elevenlabs_voice_es,
+        ),
         validator=validator,
         books=BookStore(config.books_path),
         notes=make_store(config.notes_backend, config.notes_dir),
         coach=coach,
-        coach_tts=EdgeTTS(config.coach_voice_en, config.coach_voice_es),
+        coach_tts=make_tts(
+            config,
+            config.coach_voice_en,
+            config.coach_voice_es,
+            config.elevenlabs_voice_coach_en,
+            config.elevenlabs_voice_coach_es,
+        ),
     )
     try:
         warmups: list[Awaitable[object]] = [start() for start in agents.warmups]

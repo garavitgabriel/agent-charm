@@ -106,6 +106,14 @@ class Config:
     coach_voice_en: str = "en-US-ChristopherNeural"
     coach_voice_es: str = "es-MX-JorgeNeural"
     coach_jobs_path: Path | None = None  # None: walk-away jobs in memory only (tests)
+    # ElevenLabs speech (optional): with a key and a voice id it speaks for that character, and
+    # the Edge voices above become the fallback. No key: Edge only.
+    elevenlabs_api_key: str = ""
+    elevenlabs_model: str = "eleven_flash_v2_5"
+    elevenlabs_voice_en: str = ""
+    elevenlabs_voice_es: str = ""  # "" = the English voice (Flash v2.5 is multilingual)
+    elevenlabs_voice_coach_en: str = ""  # "" = Coach stays on Edge
+    elevenlabs_voice_coach_es: str = ""
 
     @property
     def persona(self) -> Persona:
@@ -150,4 +158,10 @@ class Config:
             coach_voice_en=env.get("CHARM_VOICE_COACH_EN") or "en-US-ChristopherNeural",
             coach_voice_es=env.get("CHARM_VOICE_COACH_ES") or "es-MX-JorgeNeural",
             coach_jobs_path=_path("COACH_JOBS", SERVER_DIR / ".local" / "coach-jobs.json"),
+            elevenlabs_api_key=env.get("ELEVENLABS_API_KEY", "").strip(),
+            elevenlabs_model=env.get("ELEVENLABS_MODEL", "").strip() or "eleven_flash_v2_5",
+            elevenlabs_voice_en=env.get("ELEVENLABS_VOICE_EN", "").strip(),
+            elevenlabs_voice_es=env.get("ELEVENLABS_VOICE_ES", "").strip(),
+            elevenlabs_voice_coach_en=env.get("ELEVENLABS_VOICE_COACH_EN", "").strip(),
+            elevenlabs_voice_coach_es=env.get("ELEVENLABS_VOICE_COACH_ES", "").strip(),
         )
