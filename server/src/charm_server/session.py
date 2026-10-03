@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from charm_notes import Book, Note, NoteStore, SaveReceipt
 
+from . import SERVER_ID
 from . import protocol as p
 from .agent import Agent, AgentError, AgentTimeout, Message, answer_stream, system_messages
 from .books import BookStore
@@ -180,6 +181,23 @@ class Session:
         value = books.speech_value if name == "speech" else books.mode
         await self.send({"type": "setting", "name": name, "value": value})
 
+    async def open(self) -> None:
+        """The greeting after an accepted hello: `welcome`, the current state, then `greet()`.
+
+        Shared by the WebSocket and HTTP transports. A repeated hello on a live session (an HTTP
+        client relaunching) reports the state honestly: a running job is never shown as idle.
+        """
+        await self.send(
+            {
+                "type": "welcome",
+                "server": SERVER_ID,
+                "time": datetime.now(ZoneInfo(self.deps.config.tz)).isoformat(timespec="seconds"),
+                "tz": self.deps.config.tz,
+            }
+        )
+        await self.send_state(self.last_state if self.busy else "idle")
+        await self.greet()  # an active reading session outlives the connection
+
     async def greet(self) -> None:
         """On connect: restore an active reading session and Coach's jobs (both outlive
         connections): a job still running, and any result that finished while no device was
@@ -188,6 +206,7 @@ class Session:
             await self.send_mode()
             await self.send_setting("speech")
         desk = self.deps.coach
+        desk.detach(self._coach_done)  # a repeated greeting must not listen twice
         desk.attach(self._coach_done)
         waiting = desk.undelivered()
         if desk.jobs or waiting:

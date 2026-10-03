@@ -10,9 +10,7 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
 from http import HTTPStatus
-from zoneinfo import ZoneInfo
 
 from websockets.asyncio.server import Server, ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
@@ -85,16 +83,7 @@ async def handle(ws: ServerConnection, deps: Deps) -> None:
 
     session = Session(send_raw=send_raw, deps=deps, device_id=device_id)
     try:
-        await session.send(
-            {
-                "type": "welcome",
-                "server": SERVER_ID,
-                "time": datetime.now(ZoneInfo(deps.config.tz)).isoformat(timespec="seconds"),
-                "tz": deps.config.tz,
-            }
-        )
-        await session.send_state("idle")
-        await session.greet()  # an active reading session outlives the connection
+        await session.open()  # welcome, idle, then what outlives the connection
         async for frame in ws:
             if isinstance(frame, bytes):
                 await session.handle_binary(frame)
