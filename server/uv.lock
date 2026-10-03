@@ -232,6 +232,7 @@ name = "charm-server"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "charm-notes" },
     { name = "edge-tts" },
     { name = "faster-whisper" },
@@ -253,6 +254,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = "==3.14.3" },
     { name = "charm-notes", editable = "../notes" },
     { name = "edge-tts", specifier = "==7.2.8" },
     { name = "faster-whisper", specifier = "==1.2.1" },

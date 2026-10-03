@@ -83,6 +83,10 @@ class Config:
     voice_es: str
     whisper_model: str
     hermes_channel: bool = True
+    # The HTTP API (docs/HTTP.md) on the same host: 0 disables it. Idle device sessions expire
+    # after `http_session_ttl` seconds.
+    http_port: int = 8766
+    http_session_ttl: float = 3600.0
     books_path: Path | None = None  # None: reading state in memory only (tests)
     notes_backend: str = "file"
     notes_dir: Path | None = None  # CHARM_NOTES=file: where notes land (None: .local/notes)
@@ -140,6 +144,8 @@ class Config:
             whisper_model=env.get("CHARM_WHISPER_MODEL", "base"),
             hermes_channel=env.get("HERMES_CHANNEL", "1").strip().lower()
             not in ("0", "false", "no"),
+            http_port=int(env.get("CHARM_HTTP_PORT") or "8766"),
+            http_session_ttl=float(env.get("CHARM_HTTP_SESSION_TTL") or "3600"),
             books_path=_path("CHARM_BOOKS", SERVER_DIR / ".local" / "books.json"),
             notes_backend=env.get("CHARM_NOTES", "file").strip().lower() or "file",
             notes_dir=_path("CHARM_NOTES_DIR", SERVER_DIR / ".local" / "notes"),
