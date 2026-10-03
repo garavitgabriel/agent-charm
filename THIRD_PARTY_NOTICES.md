@@ -1,6 +1,7 @@
 # Third-party notices
 
-Dex Charm's own code is MIT (see [`LICENSE`](LICENSE)). It ships with, or fetches at build time,
+Dex Charm's own code is MIT (see [`LICENSE`](LICENSE)); its character art is CC BY-NC 4.0 (see
+[`LICENSE-ART.md`](LICENSE-ART.md)). It ships with, or fetches at build time,
 the components below. Each keeps its own license. Every entry names the file the license was
 verified from; "not verified in-repo" means the license was checked only against the package
 cache on a build machine or its published metadata, not a file committed here.

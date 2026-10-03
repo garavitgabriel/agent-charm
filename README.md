@@ -78,6 +78,7 @@ contract is [`docs/PROTOCOL.md`](docs/PROTOCOL.md), with a JSON Schema for every
 |---|---|
 | **[Waveshare ESP32-S3-Touch-AMOLED-1.8](https://www.waveshare.com/esp32-s3-touch-amoled-1.8.htm), V2** | 368×448 AMOLED (CO5300), capacitive touch (CST820), ES8311 codec with mic and speaker, QMI8658 IMU, AXP2101 power management, 16 MB flash, 8 MB PSRAM. **V2 only**: V1 uses different display and touch chips. Roughly US$25–35; check the current price. |
 | USB-C cable | For flashing and power. |
+| 5 V / 2 A USB power supply | Use a real 2 A supply or a computer port. A weak phone charger can't cover the Wi-Fi and speaker peaks, and the board boot-loops. |
 | 3.7 V LiPo (optional) | The board charges and reads a battery through the AXP2101. The charm reports a level only when a battery is actually attached. Check the connector on your board revision before buying one. |
 
 The server and the simulator run on a Mac or a Linux box.
@@ -246,6 +247,8 @@ the firmware build and native tests, and the simulator build and tests.
 
 ## License
 
-[MIT](LICENSE). Bundled and fetched components keep their own licenses; see
+Code: [MIT](LICENSE). Character art (Dex, Coach Beard, their sprites, renders and screenshots):
+[CC BY-NC 4.0](LICENSE-ART.md). That covers personal builds and forks. For a product, use your own
+character. Bundled and fetched components keep their own licenses; see
 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Notably, the fonts are OFL and two firmware
 dependencies are LGPL.
