@@ -4,7 +4,7 @@ Thanks for looking. Agent Charm is a small hobby project; issues and pull reques
 
 ## Before you open a PR
 
-- **Run the checks for what you touched** (CI runs them all):
+- **Run the checks for what you touched** (CI is off for now, so run them locally):
   - `cd server && uv run ruff check . && uv run mypy src && uv run pytest -q`
   - `cd notes && uv run pytest -q` · `cd feeds && uv run pytest -q`
   - `cd tools && uv run ruff check . && uv run mypy src && uv run pytest -q`

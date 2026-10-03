@@ -242,8 +242,9 @@ Say you want a cooking agent, **Chef**, next to Dex. Follow the path Coach took:
 
 ## Contributing
 
-Issues and PRs are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). CI runs the Python suites,
-the firmware build and native tests, and the simulator build and tests.
+Issues and PRs are welcome; see [`CONTRIBUTING.md`](CONTRIBUTING.md). The checks (Python suites, firmware
+build and native tests, simulator build and tests) are in `.github/workflows/ci.yml`; CI is off for
+now, so run them locally as `CONTRIBUTING.md` lists.
 
 ## License
 
