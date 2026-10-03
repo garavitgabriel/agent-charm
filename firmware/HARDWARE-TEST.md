@@ -1,4 +1,4 @@
-# Hardware test: first plug-in of Dex Charm
+# Hardware test: first plug-in of Agent Charm
 
 For whoever has the device on the desk. The firmware was only compiled and unit-tested when it
 was written. Nothing had run on the board yet, so **this checklist is where it's proven**. Work

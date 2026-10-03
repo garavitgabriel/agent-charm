@@ -1,4 +1,4 @@
-# sim: the Dex Charm UI on the Mac
+# sim: the Agent Charm UI on the Mac
 
 **To talk to Dex:** `scripts/demo.sh` from the repo root (see [`scripts/README.md`](../scripts/README.md)).
 It starts the server and runs this sim as a real device: hold **space** to talk.

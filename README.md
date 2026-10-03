@@ -1,11 +1,11 @@
-# Dex Charm
+# Agent Charm
 
 **A pocket AMOLED charm with a living character on it. Hold to talk to your AI agent; glance at
 what's waiting; hold to say yes.**
 
 ![Dex on the charm: home, answer, decision, reading and a money hold](docs/media/hero.png)
 
-Dex Charm is an ESP32-S3 with a 1.8" AMOLED screen, a mic and a speaker. An always-animated
+Agent Charm is an ESP32-S3 with a 1.8" AMOLED screen, a mic and a speaker. An always-animated
 character, Dex, lives on it. You hold the button and ask; a small Python server transcribes you
 (faster-whisper), asks your agent, and answers with a short card on screen and two spoken
 sentences (Edge TTS). The agent can be **any OpenAI-compatible model** (OpenAI, Anthropic's
@@ -92,7 +92,7 @@ local [Ollama](https://ollama.com) model; swap in any OpenAI-compatible endpoint
 **1. Build and test the simulator**
 
 ```sh
-git clone https://github.com/<you>/dex-charm && cd dex-charm
+git clone https://github.com/<you>/agent-charm && cd agent-charm
 cmake -S sim -B build/sim && cmake --build build/sim -j 8
 ctest --test-dir build/sim --output-on-failure
 ./build/sim/charm-sim --shots out/shots          # every screen as a PNG

@@ -1,4 +1,4 @@
-# firmware: Dex Charm on the Waveshare ESP32-S3-Touch-AMOLED-1.8 V2
+# firmware: Agent Charm on the Waveshare ESP32-S3-Touch-AMOLED-1.8 V2
 
 The hardware layer. It hosts the shared LVGL UI (`../ui`) on the device, so it implements
 `ui/charm_host.h` and drives `ui/charm_ui.h`, and it speaks `docs/PROTOCOL.md` to the charm server

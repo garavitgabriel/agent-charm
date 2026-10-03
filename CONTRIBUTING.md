@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for looking. Dex Charm is a small hobby project; issues and pull requests are welcome.
+Thanks for looking. Agent Charm is a small hobby project; issues and pull requests are welcome.
 
 ## Before you open a PR
 
