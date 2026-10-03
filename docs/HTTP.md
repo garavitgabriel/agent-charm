@@ -1,7 +1,7 @@
 # Agent Charm HTTP API — v1
 
-The turn-based HTTP face of the bridge, for clients that can't hold a WebSocket (the Apple Watch
-app first). The ESP32 keeps the WebSocket in [`PROTOCOL.md`](PROTOCOL.md). Both run in the same
+The turn-based HTTP face of the bridge, for clients that can't hold a WebSocket (a watch or phone
+app, for example). The ESP32 keeps the WebSocket in [`PROTOCOL.md`](PROTOCOL.md). Both run in the same
 process, share the same `Deps`, and apply the same rules: cards, the 2-second money hold, the
 honesty rules, Coach routing, reading mode, notes.
 
@@ -106,4 +106,4 @@ any added later), with one extra field and one extra type:
 
 ## Not in v1
 Per-device tokens and pairing (QR), the relay, push notifications, partial transcripts, the
-`charm` MCP tool for agents. See `agent-charm-apple/docs/ARCHITECTURE.md` § 9.
+`charm` MCP tool for agents. These are planned for a later version of this API.
