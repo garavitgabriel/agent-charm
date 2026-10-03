@@ -8,7 +8,7 @@ import sys
 from collections.abc import Collection
 from pathlib import Path
 
-from . import cgen, coach, dex_export, dummy, fonts, manifest, palette, smooth, sprites
+from . import cgen, coach, dex_export, dummy, fonts, manifest, pack_export, palette, smooth, sprites
 
 TOOLS_DIR = Path(__file__).resolve().parents[2]
 REPO_DIR = TOOLS_DIR.parent
@@ -166,6 +166,17 @@ def cmd_export_dex(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_pack(args: argparse.Namespace) -> int:
+    out = Path(args.out)
+    gen = f"cd tools && uv run charm-assets export-pack --character {args.character} --out <pack>"
+    p = pack_export.export(args.character, Path(args.design_src), out, gen)
+    n = len(list((out / "frames").glob("*.png")))
+    size = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
+    anims = len(p["animations"])
+    print(f"exported {p['id']}: {n} frames, {anims} animations, {size:,} bytes -> {out}")
+    return 0
+
+
 def _compile_with_dex(out: Path, no_compile: bool) -> int:
     dex = manifest.character_manifest(out / "manifest.json", "dex")
     if no_compile:
@@ -240,6 +251,13 @@ def main(argv: list[str] | None = None) -> int:
     ep.add_argument("--design-src", default=str(DESIGN_SRC), help="default: docs/design/final/src")
     ep.add_argument("--out", default=str(DEX_DIR), help="default: ui/assets-src/dex")
     ep.set_defaults(fn=cmd_export_dex)
+    kp = sub.add_parser(
+        "export-pack", help="a character pack: pack.json + RGBA frames at 2x (format 1)"
+    )
+    kp.add_argument("--character", required=True, choices=sorted(pack_export.CHARACTERS))
+    kp.add_argument("--out", required=True, help="the pack folder, e.g. .../Characters/dex")
+    kp.add_argument("--design-src", default=str(DESIGN_SRC), help="default: docs/design/final/src")
+    kp.set_defaults(fn=cmd_export_pack)
     bp = sub.add_parser("budget", help="rgb565 sprites: raw/RLE/LZ4 per pose vs the app partition")
     bp.add_argument("manifest")
     bp.add_argument(
