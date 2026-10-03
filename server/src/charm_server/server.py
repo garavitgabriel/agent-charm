@@ -1,4 +1,5 @@
-"""The charm WebSocket server: `ws://<host>:<port>/charm` (docs/PROTOCOL.md)."""
+"""The charm WebSocket server: `ws://<host>:<port>/charm` (docs/PROTOCOL.md), plus the HTTP API
+(docs/HTTP.md) on `CHARM_HTTP_PORT` in the same process."""
 
 from __future__ import annotations
 
@@ -10,15 +11,13 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
 from http import HTTPStatus
-from zoneinfo import ZoneInfo
 
 from websockets.asyncio.server import Server, ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 from websockets.http11 import Request, Response
 
-from . import SERVER_ID
+from . import SERVER_ID, http_api
 from . import protocol as p
 from .agent import Agent, HermesAgent
 from .books import BookStore
@@ -85,16 +84,7 @@ async def handle(ws: ServerConnection, deps: Deps) -> None:
 
     session = Session(send_raw=send_raw, deps=deps, device_id=device_id)
     try:
-        await session.send(
-            {
-                "type": "welcome",
-                "server": SERVER_ID,
-                "time": datetime.now(ZoneInfo(deps.config.tz)).isoformat(timespec="seconds"),
-                "tz": deps.config.tz,
-            }
-        )
-        await session.send_state("idle")
-        await session.greet()  # an active reading session outlives the connection
+        await session.open()  # welcome, idle, then what outlives the connection
         async for frame in ws:
             if isinstance(frame, bytes):
                 await session.handle_binary(frame)
@@ -239,11 +229,15 @@ async def run(config: Config, warm: bool) -> None:
             config.elevenlabs_voice_coach_es,
         ),
     )
+    http: http_api.HttpServer | None = None
     try:
         warmups: list[Awaitable[object]] = [start() for start in agents.warmups]
         if warm:
             warmups.append(asyncio.to_thread(stt.load))
         await asyncio.gather(*warmups)
+        if config.http_port:
+            http = await http_api.start(deps, config.host, config.http_port)
+            log.info("http api on http://%s:%d%s", config.host, http.port, http_api.API)
         async with await start(deps, config.host, config.port) as server:
             log.info(
                 "%s listening on ws://%s:%d%s (cards: %s, dex: %s, notes: %s, reading: %s, "
@@ -260,6 +254,8 @@ async def run(config: Config, warm: bool) -> None:
             )
             await server.serve_forever()
     finally:
+        if http is not None:
+            await http.close()
         await coach.close()
         for close in agents.closers:
             await close()
