@@ -71,6 +71,8 @@ flowchart LR
 One WebSocket carries JSON text frames and raw 16 kHz mono PCM in both directions. The full
 contract is [`docs/PROTOCOL.md`](docs/PROTOCOL.md), with a JSON Schema for every card kind in
 [`contract/`](contract/).
+Clients that can't hold a WebSocket (like a watch app) can use the turn-based HTTP API instead:
+[`docs/HTTP.md`](docs/HTTP.md).
 
 ## Hardware
 
