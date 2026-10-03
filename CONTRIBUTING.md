@@ -27,4 +27,9 @@ Thanks for looking. Agent Charm is a small hobby project; issues and pull reques
 - Vendored code keeps its license and a provenance note; add it to
   [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
-By contributing you agree your work is licensed under the repository's [MIT license](LICENSE).
+- **Character art isn't open to contributions.** Dex and Coach Beard are
+  [CC BY-NC 4.0](LICENSE-ART.md) and stay single-author, so PRs that change their frames, sprites
+  or design sources will be declined. Bug reports about them are welcome, and so is your own
+  character: see [README § Make your own character](README.md#make-your-own-character).
+
+By contributing code you agree your work is licensed under the repository's [MIT license](LICENSE).
