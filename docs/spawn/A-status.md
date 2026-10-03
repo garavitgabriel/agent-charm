@@ -63,3 +63,5 @@ branch: track/a · last commit: see `git log -1 track/a` (status commit follows 
 ## Friction / gotchas
 - `hello`'s cursor is before the greeting, so the greeting's `state:idle` is the first idle a
   client sees; tests drain it before waiting for a turn's idle.
+- HTTP sessions live much longer than WS connections, so `Session.cards` gains one answer card per
+  turn for as long as a device stays active (cleared on expiry). Harmless for M1; worth a cap later.
