@@ -49,7 +49,9 @@ Body: `{"device_id": "...", "app": "agent-charm-watch", "version": "0.1.0", "cap
 (`device_id` must equal the header).
 → `200 {"server", "time", "tz", "agent", "cursor"}`. `cursor` is the current end of the log. The
 server then runs the same greeting the WebSocket `hello` triggers (`welcome`, `mode`, `state`,
-pending cards) **into the log after `cursor`**, so the client's first `events?after=cursor`
+Coach jobs/results, reading mode) **into the log after `cursor`**. Pending decision/money/
+edition cards are **not** included: the client asks with `POST /v1/requests {"what":"pending"}`
+right after hello, so the client's first `events?after=cursor`
 receives them. Re-hello on an existing device keeps its session and history (an app relaunch
 isn't a new conversation).
 
@@ -94,7 +96,8 @@ any added later), with one extra field and one extra type:
 - Every event carries `"seq": <int>`, the device log's monotonically increasing sequence number
   (the cursor). Clients ignore unknown fields and unknown types.
 - **`speech_clip`**: `{"type": "speech_clip", "seq", "clip_id", "card_id"?, "seq_in_speech": n,
-  "url": "/v1/speech/<clip_id>.wav", "ms": <duration>}`. The binary PCM the session sends
+  "url": "/v1/speech/<clip_id>.wav", "ms": <duration>}`. `url` is relative to the **base URL**
+  (behind the Funnel the client requests `<base>/v1/speech/…`, i.e. with `/charm-api` in front). The binary PCM the session sends
   between `speech_start` and `speech_end` is cut into clips. A clip is closed and published
   when it reaches **≥ 1.5 s** of audio **or** at `speech_end`, so a long answer starts playing
   before it's fully synthesized. Clients play clips in `seq_in_speech` order within one
