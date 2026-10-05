@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -16,13 +18,31 @@ from charm_server.coach import CoachDesk, LedgerError, coach_persona
 from .conftest import FakeAgent, FakeSTT, FakeTTS, Harness, fake, texts, tone, types
 from .test_coach import CALL_REPLY, LEDGER
 
+
+def ledger_relative_to_now() -> str:
+    """LEDGER with its latest call decided 3 h ago and due in 3 days, so the server tests (which
+    read the wall clock) never drift into "deadline passed" as real time moves on."""
+    now = datetime.now(UTC)
+    rows = []
+    for line in LEDGER.splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            rows.append(line)
+            continue
+        if isinstance(row, dict) and row.get("decision_id") == "c41867dcd08117b6":
+            row["decided_at"] = (now - timedelta(hours=3)).isoformat()
+            row["deadline"] = (now + timedelta(days=3)).isoformat()
+        rows.append(json.dumps(row))
+    return "\n".join(rows)
+
 TZ = "America/Lima"
 QUESTION = "Coach, should I start Purdy or Maye?"
 
 
 @dataclass
 class FakeLedger:
-    text: str = LEDGER
+    text: str = field(default_factory=ledger_relative_to_now)
     error: str | None = None
     reads: int = 0
 
@@ -283,7 +303,7 @@ async def test_the_fast_path_reads_his_ledger(harness: Harness, coach: Coach) ->
     ]
     call = cards(frames)[0]
     assert call["id"] == "coach-call-c41867dcd08117b6" and call["source"] == "coach"
-    assert call["footer"].startswith("Called ") and call["footer"].endswith("ago")
+    assert call["footer"] == "Called 3 h ago"  # decided 3 h ago, deadline still ahead
     assert coach.agent.calls == [] and coach.ledger.reads == 1  # no fresh run
     assert coach.tts.calls and coach.tts.calls[0][0].startswith("The one lineup decision")
 
