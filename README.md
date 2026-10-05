@@ -3,6 +3,8 @@
 **A pocket AMOLED charm with a living character on it. Hold to talk to your AI agent; glance at
 what's waiting; hold to say yes.**
 
+<p align="center"><img src="docs/media/charm-real.gif" width="320" alt="The real charm in hand: hold to talk, Dex hands over to Coach Beard, who answers with a fantasy-football card"></p>
+
 ![Dex on the charm: home, answer, decision, reading and a money hold](docs/media/hero.png)
 
 Agent Charm is an ESP32-S3 with a 1.8" AMOLED screen, a mic and a speaker. An always-animated
